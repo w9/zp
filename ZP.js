@@ -60,7 +60,6 @@ ZP.range0 = function(hi) {
   return a;
 }
 
-
 /**
  * The ultimate purpose of a scale is to map between the data and the aesthetic values in **O(1)** time.
  *
@@ -72,71 +71,101 @@ ZP.range0 = function(hi) {
  * changes, which makes it sound less reliable, but not really as one could just fire an event changing
  * the dimming states of **all** points.
  *
- * <ScaleColorDiscrete> . materials = { a: <material>, b: <material> }
- *                      . indices   = { a: [0, 1, 3, ... ], b: [2, 4, ... ] }
- *                      . hexes     = { a: '#123123', b: '423433' }
- *                      . levels    = ['a', 'b']
+ * <ScaleColorDiscrete>
+ *                      . indices     = { a: [0, 1, 3, ... ], b: [2, 4, ... ] }
+ *                      . hex         = { a: '#123123', b: '423433' }
+ *                      . legendItem  = { a: <div>, b: <div> }
+ *                      . dimmed      = { a: false, b: false }
+ *                      . levels      = ['a', 'b']
  */
-//ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
-//  var _this = this;
-//
-//  var _palette = palette_ || ZP.COLOR_PALETTE;
-//
-//  var _levels = [];
-//  for (let i=0; i<vec_.length; i++) {
-//    let f = vec_[i].toString();
-//    if (_levels.indexOf(f) < 0) {
-//      _levels.push(f);
-//    }
-//  }
-//  _levels = _levels.sort();
-//
-//  var _toggleLevel = function(l) {
-//    for (i of _this.indices) {
-//    }
-//    let material = _this.get(f);
-//    material.dimmed ? _lightMaterial(material) : _dimMaterial(material);
-//  }
-//
-//  var _onlyShowOneGroup = function(f) {
-//    var m = _this.scale.mapping;
-//
-//    for (var i in m) {
-//      i == f ? lightGroup(m[i]) : dimGroup(m[i]);
-//    }
-//  }
-//
-//  var _mapping = {};
-//  for (let i=0; i<_levels.length; i++) {
-//    let f = _levels[i];
-//
-//    let color = _palette[i];
-//    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
-//
-//    let item = document.createElement('div');
-//    item.classList.add('item');
-//    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
-//    let ff = f;
-//    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleLevel(ff)});
-//    item.addEventListener('dblclick', function(e){e._stopPropagation()});
-//
-//    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
-//  }
-//
-//  let materials = [];
-//  for (let i=0; i<vec_.length; i++) {
-//    let f = vec_[i].toString();
-//    materials.push(_mapping[f].material);
-//    _mapping[f].indices.push(i);
-//  }
-//
-//  this.mapping       = _mapping      ;
-//  this.getIndices    = _getIndices   ;
-//  this.getLegendItem = _getLegendItem;
-//  this.getLegend     = _getLegend    ;
-//  this.isDimmed      = _isDimmed     ;
-//  this.getColorHex   = _getColorHex  ;
-//}
+ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
+  var _palette = palette_ || ZP.COLOR_PALETTE;
+
+  var _this = this;
+
+  var _hex = {};
+  var _legendItem = {};
+  var _indices = {};
+  var _dimmed = {};
+
+  var _levels = Array.from(new Set(vec_));
+
+  var _toggleLevel = function(l_) {
+    let action;
+    if (_this.dimmed[l_]) {
+      action = 'light';
+      _this.dimmed[l_] = false;
+      _legendItem[l_].classList.remove('dimmed');
+    } else {
+      action = 'dim';
+      _this.dimmed[l_] = true;
+      _legendItem[l_].classList.add('dimmed');
+    }
+    _this.legend.dispatchEvent(new CustomEvent(action, { detail: _this.indices[l_] }));
+  }
+
+  var _onlyShowOneGroup = function(l_) {
+    for (let l of _this.levels) {
+      if (l == l_) {
+        action = 'light';
+        _this.dimmed[l] = false;
+        _legendItem[l].classList.remove('dimmed');
+      } else {
+        action = 'dim';
+        _this.dimmed[l] = true;
+        _legendItem[l].classList.add('dimmed');
+      }
+      _this.legend.dispatchEvent(new CustomEvent(action, { detail: _this.indices[l] }));
+    }
+  }
+
+  var _mapping = {};
+  for (let i=0; i<_levels.length; i++) {
+    let l = _levels[i];
+    let hex = _palette[i];
+
+    let item = document.createElement('div');
+    item.classList.add('item');
+    item.innerHTML = '<span class="color-patch" style="background-color: ' + hex + '"></span>' + l;
+    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(l) : _toggleLevel(l)});
+    item.addEventListener('dblclick', function(e){e._stopPropagation()});
+
+    _hex[l]        = hex;
+    _legendItem[l] = item;
+    _dimmed[l]     = false;
+    _indices[l]    = [];
+  }
+
+  for (let i=0; i<vec_.length; i++) {
+    f = vec_[i].toString();
+    _indices[f].push(i);
+  }
+
+  var _toggleAllGroups = function() {
+    if (_this.dimmed.every(x => x)) {
+      action = 'light';
+      _this.dimmed.fill(false);
+      _legendItem.map(x => x.classList.remove('dimmed'));
+    } else {
+      action = 'dim';
+      _this.dimmed.fill(true);
+      _legendItem.map(x => x.classList.add('dimmed'));
+    }
+    _this.legend.dispatchEvent(new CustomEvent(action, { detail: ZP.range0(vec_.length) }));
+  }
+
+  var _legend = document.createElement('div');
+  _legend.innerHTML = '<h2>' + name_ + '</h2>';
+  _levels.map(l => _legend.appendChild(_legendItem[l]));
+  _legend.addEventListener('dblclick', function(e){_toggleAllGroups()});
+
+  this.indices     = _indices    ;
+  this.hex         = _hex        ;
+  this.legendItem  = _legendItem ;
+  this.legend      = _legend     ;
+  this.dimmed      = _dimmed     ;
+  this.levels      = _levels     ;
+}
   
 
   /**
@@ -683,7 +712,6 @@ ZP.ZP = function(el_, width_, height_) {
         datum[prop] = data_[prop][i];
       }
 
-      console.log( [x, y, z].toString() );
       var discSprt = new THREE.Sprite( material );
       discSprt.position.set( x, y, z );
       discSprt.scale.set( _dot_size, _dot_size, 1 );
