@@ -62,11 +62,20 @@ ZP.range0 = function(hi) {
 
 
 /**
- * <ScaleColorDiscrete> . getMaterial     = function 'a' -> <material>  # this is NOT the material used by points themselves: each has their own copy
- *                      . getIndices      = function 'a' -> [0, 1, 3, ... ]
- *                      . getLegendItem   = function 'a' -> <div>
- *                      . getLegend       = function ()  -> <div>
- *                      . getColorHex     = function 'a' -> '#sdf0f0'
+ * The ultimate purpose of a scale is to map between the data and the aesthetic values in **O(1)** time.
+ *
+ * The reason we need scales as independent objects is because we need polymorphism, which
+ * means that it makes no sense to have them in the first place if they each have different
+ * properties (handles).
+ *
+ * The change of the dimming status are implemented through event firing. The event only contains the
+ * changes, which makes it sound less reliable, but not really as one could just fire an event changing
+ * the dimming states of **all** points.
+ *
+ * <ScaleColorDiscrete> . materials = { a: <material>, b: <material> }
+ *                      . indices   = { a: [0, 1, 3, ... ], b: [2, 4, ... ] }
+ *                      . hexes     = { a: '#123123', b: '423433' }
+ *                      . levels    = ['a', 'b']
  */
 //ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
 //  var _this = this;
@@ -82,7 +91,9 @@ ZP.range0 = function(hi) {
 //  }
 //  _levels = _levels.sort();
 //
-//  var _toggleGroup = function(f) {
+//  var _toggleLevel = function(l) {
+//    for (i of _this.indices) {
+//    }
 //    let material = _this.get(f);
 //    material.dimmed ? _lightMaterial(material) : _dimMaterial(material);
 //  }
@@ -106,7 +117,7 @@ ZP.range0 = function(hi) {
 //    item.classList.add('item');
 //    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
 //    let ff = f;
-//    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleGroup(ff)});
+//    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleLevel(ff)});
 //    item.addEventListener('dblclick', function(e){e._stopPropagation()});
 //
 //    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
@@ -155,6 +166,8 @@ ZP.range0 = function(hi) {
    *       . x          =   _continuousScales['mds1']
    *       . y          =   _continuousScales['mds2']
    *       . z          =   _continuousScales['mds3']
+   *
+   * The legend is drawn by the plot function. The presentation is separated from the underlying data.
    *
    *
    */
