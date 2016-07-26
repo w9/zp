@@ -589,7 +589,20 @@ ZP.ZP = function(el_, width_, height_) {
       } else {
         _raycaster.setFromCamera( _mouse, _ortho_camera );
       }
-      let undimmed_points = _points.filter(function(p){return !p.material.dimmed});
+
+      let undimmed_points = [];
+      let levels = _aes.scale.levels;
+      let mapping = _aes.scale.mapping;
+      for (let i in levels) {
+        let l = levels[i];
+        let ids = mapping[l].indices;
+        if (!mapping[l].dimmed) {
+          for (let j=0; j<ids.length; j++) {
+            undimmed_points.push(_points[ids[j]]);
+          }
+        }
+      }
+
       var intersects = _raycaster.intersectObjects( undimmed_points );
       if (intersects.length > 0) {
         if (intersects[0].object != _selected_obj) {
