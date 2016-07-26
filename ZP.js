@@ -1,6 +1,6 @@
+// TODO: add "multiple coordinates" functionality (e.g., for PCA and MDS), and maybe multiple **mappings** as well
 // TODO: implement continuous scale
 // TODO: double click should add a label following that dot, using the "label" aes
-// TODO: add "multiple coordinates" functionality (e.g., for PCA and MDS), and maybe multiple **mappings** as well
 // TODO: add **instant type** search functionality, very useful when the dots are overwhelmingly many
 // TODO: use "BufferGeometry" and "PointMaterial" to render points. aspect ratio toggle can be changed accordingly
 // TODO: the "color patches" should be threejs canvas themselves
@@ -60,6 +60,104 @@ ZP.range0 = function(hi) {
   return a;
 }
 
+
+/**
+ * <ScaleColorDiscrete> . getMaterial     = function 'a' -> <material>  # this is NOT the material used by points themselves: each has their own copy
+ *                      . getIndices      = function 'a' -> [0, 1, 3, ... ]
+ *                      . getLegendItem   = function 'a' -> <div>
+ *                      . getLegend       = function ()  -> <div>
+ *                      . getColorHex     = function 'a' -> '#sdf0f0'
+ */
+//ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
+//  var _this = this;
+//
+//  var _palette = palette_ || ZP.COLOR_PALETTE;
+//
+//  var _levels = [];
+//  for (let i=0; i<vec_.length; i++) {
+//    let f = vec_[i].toString();
+//    if (_levels.indexOf(f) < 0) {
+//      _levels.push(f);
+//    }
+//  }
+//  _levels = _levels.sort();
+//
+//  var _toggleGroup = function(f) {
+//    let material = _this.get(f);
+//    material.dimmed ? _lightMaterial(material) : _dimMaterial(material);
+//  }
+//
+//  var _onlyShowOneGroup = function(f) {
+//    var m = _this.scale.mapping;
+//
+//    for (var i in m) {
+//      i == f ? lightGroup(m[i]) : dimGroup(m[i]);
+//    }
+//  }
+//
+//  var _mapping = {};
+//  for (let i=0; i<_levels.length; i++) {
+//    let f = _levels[i];
+//
+//    let color = _palette[i];
+//    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
+//
+//    let item = document.createElement('div');
+//    item.classList.add('item');
+//    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
+//    let ff = f;
+//    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleGroup(ff)});
+//    item.addEventListener('dblclick', function(e){e._stopPropagation()});
+//
+//    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
+//  }
+//
+//  let materials = [];
+//  for (let i=0; i<vec_.length; i++) {
+//    let f = vec_[i].toString();
+//    materials.push(_mapping[f].material);
+//    _mapping[f].indices.push(i);
+//  }
+//
+//  this.mapping       = _mapping      ;
+//  this.getIndices    = _getIndices   ;
+//  this.getLegendItem = _getLegendItem;
+//  this.getLegend     = _getLegend    ;
+//  this.isDimmed      = _isDimmed     ;
+//  this.getColorHex   = _getColorHex  ;
+//}
+  
+
+  /**
+   *
+   * <ScaleColorContinuous> . getMaterial       = function 23.4 -> <material>
+   *                        . getIndicesByRange = function (12.3, 23.4, true, true) -> [0, 1, 3, ... ],
+   *                        . getColorHex       = function 23.4 -> '#232343'
+   *                        . getLow            = -123.4
+   *                        . getHigh           = 123.4
+   *
+   * <ScaleContinuous> . getGLCoordinate   = function 23.4 -> 12.13
+   *                   . getIndicesByRange = function (12.3, 23.4, true, true) -> [0, 1, 3, ... ],
+   *                   . getLow            = -123.4
+   *                   . getHigh           = 123.4
+   *                                          
+   *
+   * _continuousColorScales = { avg_log_expr: <scale> }
+   * _discreteColorScales   = { group: <scale>, is_highly_expressed: <scale> }
+   * _continuousScales      = { pc1: <scale>, pc2: <scale>, pc3: <scale> }
+   *
+   * _aes1 . color      =   _discreteColorScales['group']
+   *       . x          =   _continuousScales['pc1']
+   *       . y          =   _continuousScales['pc2']
+   *       . z          =   _continuousScales['pc3']
+   *
+   * _aes2 . color      =   _discreteColorScales['group']
+   *       . x          =   _continuousScales['mds1']
+   *       . y          =   _continuousScales['mds2']
+   *       . z          =   _continuousScales['mds3']
+   *
+   *
+   */
 
 
 
@@ -246,6 +344,15 @@ ZP.Aes.prototype.changeAspectToXYZ = function(xx, yy, zz) {
 
 ZP.ZP = function(el_, width_, height_) {
   var _aes;
+  var _orbit;
+  var _stats;
+  var _points;
+  var _dot_size;
+  var _selected_obj;
+  var _floor;
+  var _crosshairs;
+  var _mouse;
+  var _raycaster;
 
   var _aspect_state = ZP.ASPECT_STATE.NONE;
   var _aspect_original = false;
@@ -253,20 +360,14 @@ ZP.ZP = function(el_, width_, height_) {
   var _scene = new THREE.Scene();
   var _scene_overlay = new THREE.Scene();
 
-  var _orbit;
-  var _stats;
-  var _points;
-  var _dot_size;
-  var _selectedObj;
-  var floor;
-  var _crosshairs;
   var _ortho = 'none';
 
   let ar = width_ / height_;
+  let s = ZP.ORTHO_SHRINK;
+
   var _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR );
   _camera.position.set( -400, 0, -130 );
 
-  let s = ZP.ORTHO_SHRINK;
   var _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR );
 
 
@@ -316,9 +417,6 @@ ZP.ZP = function(el_, width_, height_) {
   datumDisplay.id = 'datum-display';
   overlayDom.appendChild(datumDisplay);
 
-  var _mouse;
-  var _raycaster;
-
   function syncGeometryWithAes() {
     // animate the _points
     for (var i in _points) {
@@ -339,7 +437,7 @@ ZP.ZP = function(el_, width_, height_) {
         .start();
 
       // animate the crosshairs
-      if (_points[ii] === _selectedObj) {
+      if (_points[ii] === _selected_obj) {
         (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){
             _crosshairs.position.set(this.x, this.y, this.z);
@@ -358,19 +456,19 @@ ZP.ZP = function(el_, width_, height_) {
       { x: _aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN }
     ];
 
-    for (var i in floor.geometry.vertices) {
+    for (var i in _floor.geometry.vertices) {
       let ii = i;
       let a = {
-        x: floor.geometry.vertices[ii].x,
-        y: floor.geometry.vertices[ii].y,
-        z: floor.geometry.vertices[ii].z
+        x: _floor.geometry.vertices[ii].x,
+        y: _floor.geometry.vertices[ii].y,
+        z: _floor.geometry.vertices[ii].z
       };
       let b = newFloorVertices[ii];
 
       (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
-          floor.geometry.vertices[ii].set(this.x, this.y, this.z);
-          floor.geometry.verticesNeedUpdate = true;
+          _floor.geometry.vertices[ii].set(this.x, this.y, this.z);
+          _floor.geometry.verticesNeedUpdate = true;
         })
         .start();
     }
@@ -381,11 +479,7 @@ ZP.ZP = function(el_, width_, height_) {
     _points = [];
     _mouse = new THREE.Vector2(Infinity, Infinity);
     _raycaster = new THREE.Raycaster();
-    _selectedObj = null;
-
-
-    var keyboard = new THREEx.KeyboardState();
-
+    _selected_obj = null;
 
     //------------------------- Remap AES -------------------------//
 
@@ -490,40 +584,26 @@ ZP.ZP = function(el_, width_, height_) {
     });
 
     _renderer.domElement.addEventListener('dblclick', function(e) {
-      let undimmed_points = [];
-      let levels = _aes.scale.levels;
-      let mapping = _aes.scale.mapping;
-
-      for (let i in levels) {
-        let l = levels[i];
-        let ids = mapping[l].indices;
-        if (!mapping[l].dimmed) {
-          for (let j=0; j<ids.length; j++) {
-            undimmed_points.push(_points[ids[j]]);
-          }
-        }
-      }
-      let undimmed_points_flatten = [].concat.apply([], undimmed_points);
-
       if (_ortho == 'none') {
         _raycaster.setFromCamera( _mouse, _camera );
       } else {
         _raycaster.setFromCamera( _mouse, _ortho_camera );
       }
+      let undimmed_points = _points.filter(function(p){return !p.material.dimmed});
       var intersects = _raycaster.intersectObjects( undimmed_points );
       if (intersects.length > 0) {
-        if (intersects[0].object != _selectedObj) {
-          _selectedObj = intersects[0].object;
+        if (intersects[0].object != _selected_obj) {
+          _selected_obj = intersects[0].object;
           var outputs = [];
-          for (var prop in _selectedObj.datum) {
-            outputs.push(prop + ' = ' + _selectedObj.datum[prop]);
+          for (var prop in _selected_obj.datum) {
+            outputs.push(prop + ' = ' + _selected_obj.datum[prop]);
           }
           datumDisplay.innerText = outputs.join('\n');
-          _crosshairs.position.copy(_selectedObj.position);
+          _crosshairs.position.copy(_selected_obj.position);
           _crosshairs.visible = true;
         }
       } else {
-        _selectedObj = null;
+        _selected_obj = null;
         datumDisplay.innerText = '';
         _crosshairs.visible = false;
       }
@@ -560,8 +640,8 @@ ZP.ZP = function(el_, width_, height_) {
         floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, _aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN));
         floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN));
         floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN));
-    floor = new THREE.Line(floorGtry, floorMtrl);
-    _scene.add(floor);
+    _floor = new THREE.Line(floorGtry, floorMtrl);
+    _scene.add(_floor);
 
     // Sprites
 
