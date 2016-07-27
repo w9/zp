@@ -86,7 +86,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   // this array will later be destroyed so don't use reference directly
   var _palette = (palette_ || ZP.COLOR_PALETTE).slice();
 
-  var _levels = Array.from(new Set(vec_)).sort();
+  var _levels = Array.from(new Set(vec_)).map(l => l === null ? null : l.toString()).sort();
 
   var _changeLevel = function(l, action_) {
     _dimmed[l] = action_ == 'dim' ? true : false;
@@ -122,7 +122,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
     let item = document.createElement('div');
     item.classList.add('item');
-    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + l;
+    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + (l === null ? 'None' : l);
     item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneLevel(l) : _toggleLevel(l)});
     item.addEventListener('dblclick', function(e){e.stopPropagation()});
     itemContainer.appendChild(item);
@@ -131,6 +131,9 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
     _legendItem[l] = item;
     _indices[l] = [];
     _dimmed[l] = false;
+
+    if (l === null) { _toggleLevel(l, 'dim') }
+    
   }
 
   var _values = vec_.map(f => _color[f]);
@@ -183,6 +186,21 @@ ZP.ScaleContinuous = function(vec_, name_) {
 
 
 /**
+ * Dim "false" data by default
+ *
+ * <ScaleColorBoolean>
+ *                       . values    = [ '#f1f1f1', '#f1a313', ... ]
+ *                       . legend    = <div>
+ */
+ZP.ScaleColorBoolean = function(vec_, name_) {
+  // TODO
+};
+
+
+
+/**
+ * Dim "NA" data by default.
+ *
  * <ScaleColorContinous>
  *                       . values    = [ '#f1f1f1', '#f1a313', ... ]
  *                       . legend    = <div>
@@ -738,7 +756,9 @@ ZP.AesOld = function(data_, mapping_, aspect_) {
 
   function toggleGroup(f) {
     var m = _this.scale.mapping[f];
-    m.dimmed ? lightGroup(m) : dimGroup(m);
+    if (m) {
+      m.dimmed ? lightGroup(m) : dimGroup(m);
+    }
   }
 
   function onlyShowOneGroup(f) {
@@ -775,7 +795,7 @@ ZP.AesOld = function(data_, mapping_, aspect_) {
 
     let levels = [];
     for (let i=0; i<fs.length; i++) {
-      let f = fs[i].toString();
+      let f = fs[i] === null ? null : fs[i].toString();
       if (levels.indexOf(f) < 0) {
         levels.push(f);
       }
@@ -791,7 +811,7 @@ ZP.AesOld = function(data_, mapping_, aspect_) {
 
       var item = document.createElement('div');
       item.classList.add('item');
-      item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
+      item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + (f === null ? 'none' : f);
       let ff = f;
       item.addEventListener('click', function(e){e.ctrlKey ? onlyShowOneGroup(ff) : toggleGroup(ff)});
       item.addEventListener('dblclick', function(e){e.stopPropagation()});
@@ -801,7 +821,7 @@ ZP.AesOld = function(data_, mapping_, aspect_) {
 
     let materials = [];
     for (let i=0; i<fs.length; i++) {
-      let f = fs[i].toString();
+      let f = fs[i] === null ? null : fs[i].toString();
       materials.push(mapping[f].material);
       mapping[f].indices.push(i);
     }
@@ -818,6 +838,8 @@ ZP.AesOld = function(data_, mapping_, aspect_) {
     let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(ZP.COLOR_PALETTE[0]), fog: true } );
     this.material = this.index.map(function(){return material});
   }
+
+  toggleGroup(null);
 }
 
 ZP.AesOld.prototype.changeAspectTo = function(aspect) {
