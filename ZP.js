@@ -73,15 +73,21 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
   var _this = this;
 
   var _dimmed = {};
+  var _color = {};
+  var _legendItem = {};
+  var _indices = {};
+  var _dimmed = {};
+  var _legend;
 
   // this array will later be destroyed so don't use reference directly
-  var _palette = palette_.slice() || ZP.COLOR_PALETTE.slice();
+  var _palette = (palette_ || ZP.COLOR_PALETTE).slice();
 
   var _levels = Array.from(new Set(vec_)).sort();
 
   var _changeLevel = function(l, action_) {
     _dimmed[l] = action_ == 'dim' ? true : false;
-    this.dispatchEvent(new CustomEvent(action_, { detail: _indices[l] }));
+    _legendItem[l].classList[action_ == 'dim' ? 'add' : 'remove']('dimmed');
+    _legend.dispatchEvent(new CustomEvent(action_, { bubbles: true, detail: _indices[l] }));
   };
   
   var _toggleLevel = function(l) {
@@ -94,15 +100,20 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
     }
   };
 
+  var _toggleAllLevels = function() {
+    let action = _levels.every(l => _dimmed(l)) ? 'light' : 'dim';
+    _levels.map(l => _changeLevel(l, action));
+  }
 
-  var _legend = document.createElement('div');
-  _legend.innerHTML = '<h2>' + legendTitle + '</h2>';
+  _legend = document.createElement('div');
+  _legend.innerHTML = '<h2>' + name_ + '</h2>';
 
   let itemContainer = document.createElement('div');
   itemContainer.id = 'item-container';
   _legend.appendChild(itemContainer);
+  _legend.addEventListener('dblclick', function(e){_toggleAllLevels()});
 
-  for (let l of levels) {
+  for (let l of _levels) {
     let color = _palette.shift();
 
     let item = document.createElement('div');
@@ -110,7 +121,7 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
     item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + l;
     item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneLevel(l) : _toggleLevel(l)});
     item.addEventListener('dblclick', function(e){e.stopPropagation()});
-    itemContainer.appendChild(_legendItem[l]);
+    itemContainer.appendChild(item);
 
     _color[l] = color;
     _legendItem[l] = item;
@@ -118,16 +129,16 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
     _dimmed[l] = false;
   }
 
-  _legend.addEventListener('dblclick', function(e){toggleAllGroups()});
-  return _legend;
-
-  for (let f of vec_) {
-    _values.push(_color[f]);
-  }
+  var _values = vec_.map(f => _color[f]);
 
   this.legend = _legend;
   this.values = _values;
 }
+
+//var s = new ZP.ScaleColorDiscrete('asdfsaf', ['v', 'a', 'a', 'b', 'b', 'a']);
+//document.getElementById('legend').appendChild(s.legend);
+//document.getElementById('legend').addEventListener('dim', e => console.log(e));
+//document.getElementById('legend').addEventListener('light', e => console.log(e));
   
 
   /**
