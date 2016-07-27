@@ -19,6 +19,7 @@ ZP = {};
 ZP.ASPECT = { EQUAL: 0, ORIGINAL: 1 };
 ZP.ASPECT_STATE = { NONE: 0, TRANSITIONING: 1 };
 
+ZP.DEFAULT_COLOR = ['#555555'];
 ZP.COLOR_PALETTE = ['#01a0e4','#db2d20','#01a252','#a16a94','#555555','#b5e4f4'];
 ZP.VIEW_ANGLE = 45;
 ZP.ORTHO_SHRINK = 180;
@@ -55,21 +56,24 @@ ZP.range0 = function(hi) {
 
 
 /**
- * The ultimate purpose of a scale is to map between the data and the aesthetic values in **O(1)** time.
+ * The ultimate purpose of a scale is to map between the data and the aesthetic values in *O(1)* time.
  *
  * The reason we need scales as independent objects is because we need polymorphism, which
  * means that it makes no sense to have them in the first place if they each have different
  * properties (handles).
  *
- * The change of the dimming status are implemented through event firing. The event only contains the
- * changes, which makes it sound less reliable, but not really as one could just fire an event changing
- * the dimming states of **all** points.
+ * Only the property "values" is guaranteed to be used. Things like "legend" is just something useful provided
+ * by the scale (because it conveniently has all the information needed for generating such things).
+ * It is completely up to the presenter as to whether, and how to use it. For example, if and where to put the "legend".
+ *
+ * The way a scale communicates with the presenter is through event firing. This is so that
+ * the scale doesn't have to know the existence of a presenter.
  *
  * <ScaleColorDiscrete>
  *                      . values    = [ '#f1f1f1', '#f1a313', ... ]
  *                      . legend    = <div>
  */
-ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
+ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   var _this = this;
 
   var _dimmed = {};
@@ -103,7 +107,7 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
   var _toggleAllLevels = function() {
     let action = _levels.every(l => _dimmed(l)) ? 'light' : 'dim';
     _levels.map(l => _changeLevel(l, action));
-  }
+  };
 
   _legend = document.createElement('div');
   _legend.innerHTML = '<h2>' + name_ + '</h2>';
@@ -133,54 +137,536 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
 
   this.legend = _legend;
   this.values = _values;
-}
-
-//var s = new ZP.ScaleColorDiscrete('asdfsaf', ['v', 'a', 'a', 'b', 'b', 'a']);
-//document.getElementById('legend').appendChild(s.legend);
-//document.getElementById('legend').addEventListener('dim', e => console.log(e));
-//document.getElementById('legend').addEventListener('light', e => console.log(e));
-  
 
   /**
+   * Chromium console test:
    *
-   * <ScaleColorContinuous> . getMaterial       = function 23.4 -> <material>
-   *                        . getIndicesByRange = function (12.3, 23.4, true, true) -> [0, 1, 3, ... ],
-   *                        . getColorHex       = function 23.4 -> '#232343'
-   *                        . getLow            = -123.4
-   *                        . getHigh           = 123.4
-   *
-   * <ScaleContinuous> . getGLCoordinate   = function 23.4 -> 12.13
-   *                   . getIndicesByRange = function (12.3, 23.4, true, true) -> [0, 1, 3, ... ],
-   *                   . getLow            = -123.4
-   *                   . getHigh           = 123.4
-   *                                          
-   *
-   * _continuousColorScales = { avg_log_expr: <scale> }
-   * _discreteColorScales   = { group: <scale>, is_highly_expressed: <scale> }
-   * _continuousScales      = { pc1: <scale>, pc2: <scale>, pc3: <scale> }
-   *
-   * _aes1 . color      =   _discreteColorScales['group']
-   *       . x          =   _continuousScales['pc1']
-   *       . y          =   _continuousScales['pc2']
-   *       . z          =   _continuousScales['pc3']
-   *
-   * _aes2 . color      =   _discreteColorScales['group']
-   *       . x          =   _continuousScales['mds1']
-   *       . y          =   _continuousScales['mds2']
-   *       . z          =   _continuousScales['mds3']
-   *
-   * The legend is drawn by the plot function. The presentation is separated from the underlying data.
-   *
+   * var s = new ZP.ScaleColorDiscrete(['v', 'a', 'a', 'b', 'b', 'a'], 'adfaf');
+   * document.getElementById('legend').appendChild(s.legend);
+   * document.getElementById('legend').addEventListener('dim', e => console.log(e));
+   * document.getElementById('legend').addEventListener('light', e => console.log(e));
    *
    */
+};
+
+
+
+/**
+ * <ScaleContinuous>
+ *                  . values    = [ 0.12, -0.23, ... ] # -1~1
+ *                  . span      = 45.67
+ *                  . low       = -23.34 
+ *                  . high      = 23.34
+ *                  . name      = 'pc1'
+ */
+ZP.ScaleContinuous = function(vec_, name_) {
+  var _values = ZP.normalize11(vec_);
+
+  var _low    = Math.min(...vec_);
+  var _high   = Math.max(...vec_);
+  var _span   = _high - _low;
+
+  this.values = _values;
+  this.span   = _span;
+  this.low    = _low;
+  this.high   = _high;
+  this.name   = name_;
+
+  /**
+   * Chromium console test:
+   *
+   * var s = new ZP.ScaleContinuous([0, 1, 10, 1, 2], 'adfaf');
+   *
+   */
+};
+
+
+
+/**
+ * <ScaleColorContinous>
+ *                       . values    = [ '#f1f1f1', '#f1a313', ... ]
+ *                       . legend    = <div>
+ */
+ZP.ScaleColorContinuous = function(vec_, name_) {
+  // TODO
+};
+
+
+
+/**
+ * What's in an Aes (a "presentation" if you will) is very specific to the
+ * application. In ZP, for example, an Aes should have the following slots for
+ * scales: x, y, z, and optionally color, alpha, size, etc. For each slot, only
+ * certain types of scales are allowed.
+ *
+ * Aes is like the specification of what the presenter needs. It should be
+ * a direct translation of the mapping_ input. Different Aes's can share scales
+ * (via reference) to improve performance.
+ *
+ * <Aes>
+ *       . x
+ *       . y
+ *       . z
+ *       . color [optional]
+ */
+ZP.Aes = function(attrs_) {
+  if (!attrs.x || !attrs.y || !attrs.z) {
+    throw new Error("x, y and z are required in the mapping!");
+  }
+  this.x = attrs.x;
+  this.y = attrs.y;
+  this.z = attrs.z;
+  this.color = attrs.color;
+};
+
+/**
+ *
+ * Aeses
+ *
+ *     1
+ *       . x          =   _continuousScales['pc1']
+ *       . y          =   _continuousScales['pc2']
+ *       . z          =   _continuousScales['pc3']
+ *       . color      =   _discreteColorScales['group']
+ *
+ *     2 . x          =   _continuousScales['mds1']
+ *       . y          =   _continuousScales['mds2']
+ *       . z          =   _continuousScales['mds3']
+ *       . color      =   _discreteColorScales['group']
+ *
+ *
+ */
+ZP.ZP = function(el_, width_, height_) {
+  var _aes;
+
+  var _aspect_state = ZP.ASPECT_STATE.NONE;
+  var _aspect_original = false;
+
+  var _scene = new THREE.Scene();
+  var _scene_overlay = new THREE.Scene();
+
+  var _orbit;
+  var _stats;
+  var _points;
+  var _selected_obj;
+  var _floor;
+  var _crosshairs;
+  var _ortho = 'none';
+
+  var _aeses;
+
+  let ar = width_ / height_;
+  var _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR );
+  _camera.position.set( -400, 0, -130 );
+
+  let s = ZP.ORTHO_SHRINK;
+  var _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR );
+
+
+  var _renderer = new THREE.WebGLRenderer( { antialias:true } );
+  _renderer.setSize(width_, height_);
+  _renderer.setClearColor(0xffffff, 1);
+  _renderer.autoClear = false;
+
+  var container = document.createElement('div');
+  container.id = 'plot-container';
+  el_.appendChild(container);
+
+  var legendDiv = document.createElement('div');
+  legendDiv.id = 'legend';
+  el_.appendChild(legendDiv);
+
+  var overlayDom = document.createElement('div');
+  overlayDom.id = 'overlay';
+  el_.appendChild(overlayDom);
+
+  var toolbarDom = document.createElement('div');
+  toolbarDom.id = 'toolbar';
+  overlayDom.appendChild(toolbarDom);
+
+  var resetCameraButton = document.createElement('i');
+  resetCameraButton.innerText = 'youtube_searched_for';
+  resetCameraButton.id = 'reset-camera-button';
+  resetCameraButton.title = 'reset camera angle';
+  resetCameraButton.classList.add('material-icons');
+  toolbarDom.appendChild(resetCameraButton);
+
+  var toggleAspectButton = document.createElement('i');
+  toggleAspectButton.innerText = 'aspect_ratio';
+  toggleAspectButton.id = 'toggle-aspect-buttom';
+  toggleAspectButton.title = 'toggle aspect ratio between 1:1:1 and original';
+  toggleAspectButton.classList.add('material-icons');
+  toolbarDom.appendChild(toggleAspectButton);
+
+  var toggleOrthoButton = document.createElement('i');
+  toggleOrthoButton.innerText = 'call_merge';
+  toggleOrthoButton.id = 'toggle-ortho-buttom';
+  toggleOrthoButton.title = 'toggle between orthographic and perspective camera';
+  toggleOrthoButton.classList.add('material-icons');
+  toolbarDom.appendChild(toggleOrthoButton);
+
+  var datumDisplay = document.createElement('div');
+  datumDisplay.id = 'datum-display';
+  overlayDom.appendChild(datumDisplay);
+
+  var _mouse;
+  var _raycaster;
+
+  function syncGeometryWithAes() {
+    // animate the _points
+    for (var i in _points) {
+      let ii = i;
+      let a = {
+        x: _points[ii].position.x,
+        y: _points[ii].position.y,
+        z: _points[ii].position.z
+      };
+      let b = {
+        x: _aes.x[ii],
+        y: _aes.y[ii],
+        z: _aes.z[ii]
+      };
+
+      (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
+        .onUpdate(function(){ _points[ii].position.set(this.x, this.y, this.z); })
+        .start();
+
+      // animate the crosshairs
+      if (_points[ii] === _selected_obj) {
+        (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){
+            _crosshairs.position.set(this.x, this.y, this.z);
+          })
+          .start();
+      }
+    }
+
+
+    // animate the floor
+    var newFloorVertices = [
+      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.lo },
+      { x: _aes.x.hi, y: _aes.y.lo, z: _aes.z.lo },
+      { x: _aes.x.hi, y: _aes.y.lo, z: _aes.z.hi },
+      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.hi },
+      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.lo }
+    ];
+
+    for (var i in _floor.geometry.vertices) {
+      let ii = i;
+      let a = {
+        x: _floor.geometry.vertices[ii].x,
+        y: _floor.geometry.vertices[ii].y,
+        z: _floor.geometry.vertices[ii].z
+      };
+      let b = newFloorVertices[ii];
+
+      (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
+        .onUpdate(function(){
+          _floor.geometry.vertices[ii].set(this.x, this.y, this.z);
+          _floor.geometry.verticesNeedUpdate = true;
+        })
+        .start();
+    }
+
+  }
+
+  this.plot = function(data_, mappings_) {
+    _points = [];
+    _mouse = new THREE.Vector2(Infinity, Infinity);
+    _raycaster = new THREE.Raycaster();
+    _selected_obj = null;
+
+
+    //------------------------- Remap AES -------------------------//
+
+    /**
+     * scales = { pc1: { x: <scale> }, group: { y: <scale> }, .. }
+     *
+     * mappings_ = { pca: { x: 'pc1'  , y: 'pc2'  , z: 'pc3'  , color: 'group' } ,
+     *               mds: { x: 'mds1' , y: 'mds2' , z: 'mds3' , color: 'group' } }
+     *
+     * TODO: should be based on types instead of aes slots:
+     *       scales = { pc1: { continuous: <scale> }, group: { color_discrete: <scale> }, .. }
+     */
+    //let scales = {};
+    //for (let col in data_) {
+    //  let scales[col] = {};
+    //}
+
+    //_aeses = {};
+    //for (m in mappings_) {
+    //  let mapping = mappings_[m];
+    //  let attrs = {};
+    //  for (a in mapping) {
+    //    let col = mapping[a];
+    //    if (scales[col][a]) {
+    //      attrs[a] = scales[col][a];
+    //    } else {
+    //      if (a == 'x' || a == 'y' || a == 'z') {
+    //        attrs[a] = new ZP.ScaleContinuous(data_[col], col);
+    //      } else if (a == 'color') {
+    //        attrs[a] = new ZP.ScaleColorDiscrete(data_[col], col);
+    //      } else {
+    //        throw new Error(a + " in mappings is not supported!");
+    //      }
+    //    }
+    //  }
+    //  _aeses[m] = new ZP.Aes(attrs);
+    //}
+
+
+
+    _aes = new ZP.AesOld(data_, mappings_);
+    if (_aes.legendDom) legendDiv.appendChild(_aes.legendDom);
+
+    //------------------------ Handle events ----------------------//
+
+    
+    resetCameraButton.addEventListener('click', function(e) {
+      _orbit.moveToOriginal();
+
+    });
+
+    toggleAspectButton.addEventListener('click', function(e) {
+      if (_aspect_original) {
+        _aes.changeAspectTo(ZP.ASPECT.ORIGINAL);
+        toggleAspectButton.classList.remove('activated');
+        _aspect_original = false;
+      } else {
+        _aes.changeAspectTo(ZP.ASPECT.EQUAL);
+        toggleAspectButton.classList.add('activated');
+        _aspect_original = true;
+      }
+      syncGeometryWithAes();
+    });
+
+    toggleOrthoButton.addEventListener('click', function(e) {
+      if (_ortho == 'none') {
+        _ortho_camera.position.set( 0, 1000, 0 );
+        _ortho_camera.up.set( 1, 0, 0 );
+        _ortho_camera.lookAt(new THREE.Vector3(0, 0, 0));
+        _ortho_camera.zoom = 1
+        _ortho_camera.updateProjectionMatrix();
+
+        _ortho_orbit.target = new THREE.Vector3(0, 0, 0);
+        _ortho_orbit.enabled = true;
+        _orbit.enabled = false;
+
+        _ortho = 'z';
+      } else if (_ortho == 'z') {
+        _ortho_camera.position.set( -1000, 0, 0 );
+        _ortho_camera.up.set( 0, 1, 0 );
+        _ortho_camera.lookAt(new THREE.Vector3(0, 0, 0));
+        _ortho_camera.zoom = 1
+        _ortho_camera.updateProjectionMatrix();
+
+        _ortho_orbit.target = new THREE.Vector3(0, 0, 0);
+        _ortho_orbit.enabled = true;
+        _orbit.enabled = false;
+
+        _ortho = 'y';
+      } else if (_ortho == 'y') {
+        _ortho_camera.position.set( 0, 0, -1000 );
+        _ortho_camera.up.set( 0, 1, 0 );
+        _ortho_camera.lookAt(new THREE.Vector3(0, 0, 0));
+        _ortho_camera.zoom = 1
+        _ortho_camera.updateProjectionMatrix();
+
+        _ortho_orbit.target = new THREE.Vector3(0, 0, 0);
+        _ortho_orbit.enabled = true;
+        _orbit.enabled = false;
+
+        _ortho = 'x';
+      } else if (_ortho == 'x') {
+        _ortho = 'none';
+
+        _ortho_orbit.enabled = false;
+        _orbit.enabled = true;
+      }
+    });
+
+    el_.addEventListener('keypress', function(e) {
+      switch (e.key) {
+        case 'p':
+          _stats.domElement.hidden = !_stats.domElement.hidden;
+          break;
+        default:
+          break;
+      }
+    });
+
+    //-------------------------------------------------------------//
+
+
+    //_scene.fog = new THREE.Fog(0xffffff, 400, 1000);
+
+    _scene.add( _camera );
+
+    _renderer.domElement.addEventListener('mousemove', function(e) {
+      _mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+      _mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+    });
+
+    _renderer.domElement.addEventListener('dblclick', function(e) {
+      let undimmed_points = [];
+      let levels = _aes.scale.levels;
+      let mapping = _aes.scale.mapping;
+
+      for (let i in levels) {
+        let l = levels[i];
+        let ids = mapping[l].indices;
+        if (!mapping[l].dimmed) {
+          for (let j=0; j<ids.length; j++) {
+            undimmed_points.push(_points[ids[j]]);
+          }
+        }
+      }
+      let undimmed_points_flatten = [].concat.apply([], undimmed_points);
+
+      if (_ortho == 'none') {
+        _raycaster.setFromCamera( _mouse, _camera );
+      } else {
+        _raycaster.setFromCamera( _mouse, _ortho_camera );
+      }
+      var intersects = _raycaster.intersectObjects( undimmed_points );
+      if (intersects.length > 0) {
+        if (intersects[0].object != _selected_obj) {
+          _selected_obj = intersects[0].object;
+          var outputs = [];
+          for (var prop in _selected_obj.datum) {
+            outputs.push(prop + ' = ' + _selected_obj.datum[prop]);
+          }
+          datumDisplay.innerText = outputs.join('\n');
+          _crosshairs.position.copy(_selected_obj.position);
+          _crosshairs.visible = true;
+        }
+      } else {
+        _selected_obj = null;
+        datumDisplay.innerText = '';
+        _crosshairs.visible = false;
+      }
+    });
+
+    container.appendChild( _renderer.domElement );
+
+    _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0));
+    _orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
+    _orbit.enableDamping = true;
+    _orbit.dampingFactor = 0.4;
+    _orbit.update();
+
+    _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0));
+    _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
+    _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT };
+    _ortho_orbit.enabled = false;
+    _ortho_orbit.enableRotate = false;
+    _ortho_orbit.enableDamping = true;
+    _ortho_orbit.dampingFactor = 0.4;
+    _ortho_orbit.update();
+
+    _stats = new Stats();
+    _stats.domElement.style.position = 'absolute';
+    _stats.domElement.style.bottom = '0px';
+    _stats.domElement.style.zIndex = 100;
+    _stats.domElement.hidden = true;
+    container.appendChild( _stats.domElement );
+
+    let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
+    let floorGtry = new THREE.Geometry();
+        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
+        floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi, _aes.y.lo, _aes.z.lo));
+        floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi, _aes.y.lo, _aes.z.hi));
+        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.hi));
+        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
+    _floor = new THREE.Line(floorGtry, floorMtrl);
+    _scene.add(_floor);
+
+    // Sprites
+
+    let dotSize = Math.cbrt(7.5 + 60000 / _aes.index.length);
+    
+    for (var i in _aes.index) {
+      var x = _aes.x[i];
+      var y = _aes.y[i];
+      var z = _aes.z[i];
+      var material = _aes.material[i];
+
+      var datum = {};
+      // note that _index is 1-based
+      datum._index = parseInt(i)+1;
+      for (var prop in data_) {
+        datum[prop] = data_[prop][i];
+      }
+
+      var discSprt = new THREE.Sprite( material );
+      discSprt.position.set( x, y, z );
+      discSprt.scale.set( dotSize, dotSize, 1 );
+      discSprt.datum = datum;
+      _scene.add( discSprt );
+
+      _points.push(discSprt);
+    }
+
+    // overlay scene
+
+    var crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON);
+    crosshairsTxtr.needsUpdate = true;
+    var crosshairsMtrl = new THREE.SpriteMaterial({
+      map: crosshairsTxtr,
+      color: new THREE.Color('#000000')
+    });
+    _crosshairs = new THREE.Sprite( crosshairsMtrl );
+    _crosshairs.position.set( Infinity, Infinity, Infinity );
+    _crosshairs.visible = false;
+    _crosshairs.tweenObj = { size: 10 };
+    _crosshairs.tween = new TWEEN.Tween(_crosshairs.tweenObj)
+    _crosshairs.tween.to({ size: 14 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
+      .onUpdate(function(){ _crosshairs.scale.set(this.size, this.size, 1) })
+      .start()
+    _scene_overlay.add( _crosshairs );
+
+    animate();
+
+    function animate() {
+      requestAnimationFrame( animate );
+      render();   
+      update();
+    }
+
+    function update() {
+      TWEEN.update();
+      _orbit.update();
+      _stats.update();
+    }
+
+    function render() {
+      let render_camera = _ortho == 'none' ? _camera : _ortho_camera;
+      _renderer.clear();
+      _renderer.render( _scene, render_camera );
+      _renderer.clearDepth();
+      _renderer.render( _scene_overlay, render_camera );
+    }
+  };
+
+  this.resize = function(width, height) {
+    _renderer.setSize( width, height );
+
+    _camera.aspect = width / height;
+    _camera.updateProjectionMatrix();
+
+    _ortho_camera.left = width / height * -ZP.ORTHO_SHRINK;
+    _ortho_camera.right = width / height * ZP.ORTHO_SHRINK;
+    _ortho_camera.top = ZP.ORTHO_SHRINK;
+    _ortho_camera.bottom = -ZP.ORTHO_SHRINK;
+    _ortho_camera.updateProjectionMatrix();
+  };
+}
 
 
 
 
 
-
-
-ZP.Aes = function(data_, mapping_, aspect_) {
+ZP.AesOld = function(data_, mapping_, aspect_) {
   var _this = this;
 
   var discTxtr = new THREE.Texture(ZP.POINT_ICON);
@@ -329,7 +815,7 @@ ZP.Aes = function(data_, mapping_, aspect_) {
   }
 }
 
-ZP.Aes.prototype.changeAspectTo = function(aspect) {
+ZP.AesOld.prototype.changeAspectTo = function(aspect) {
   if (!aspect || aspect == ZP.ASPECT.EQUAL) {
     this.changeAspectToXYZ(100, 100, 100);
   } else if (aspect == ZP.ASPECT.ORIGINAL) {
@@ -341,405 +827,9 @@ ZP.Aes.prototype.changeAspectTo = function(aspect) {
   }
 }
 
-ZP.Aes.prototype.changeAspectToXYZ = function(xx, yy, zz) {
+ZP.AesOld.prototype.changeAspectToXYZ = function(xx, yy, zz) {
   this.x = ZP.normalize11(this.x, xx);
   this.y = ZP.normalize11(this.y, yy);
   this.z = ZP.normalize11(this.z, zz);
-}
-
-
-
-
-
-
-
-ZP.ZP = function(el_, width_, height_) {
-  var _aes;
-
-  var _aspect_state = ZP.ASPECT_STATE.NONE;
-  var _aspect_original = false;
-
-  var _scene = new THREE.Scene();
-  var _scene_overlay = new THREE.Scene();
-
-  var _orbit;
-  var _stats;
-  var _points;
-  var _selectedObj;
-  var floor;
-  var _crosshairs;
-  var _ortho = 'none';
-
-  let ar = width_ / height_;
-  var _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR );
-  _camera.position.set( -400, 0, -130 );
-
-  let s = ZP.ORTHO_SHRINK;
-  var _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR );
-
-
-  var _renderer = new THREE.WebGLRenderer( { antialias:true } );
-  _renderer.setSize(width_, height_);
-  _renderer.setClearColor(0xffffff, 1);
-  _renderer.autoClear = false;
-
-  var container = document.createElement('div');
-  container.id = 'plot-container';
-  el_.appendChild(container);
-
-  var legendDiv = document.createElement('div');
-  legendDiv.id = 'legend';
-  el_.appendChild(legendDiv);
-
-  var overlayDom = document.createElement('div');
-  overlayDom.id = 'overlay';
-  el_.appendChild(overlayDom);
-
-  var toolbarDom = document.createElement('div');
-  toolbarDom.id = 'toolbar';
-  overlayDom.appendChild(toolbarDom);
-
-  var resetCameraButton = document.createElement('i');
-  resetCameraButton.innerText = 'youtube_searched_for';
-  resetCameraButton.id = 'reset-camera-button';
-  resetCameraButton.title = 'reset camera angle';
-  resetCameraButton.classList.add('material-icons');
-  toolbarDom.appendChild(resetCameraButton);
-
-  var toggleAspectButton = document.createElement('i');
-  toggleAspectButton.innerText = 'aspect_ratio';
-  toggleAspectButton.id = 'toggle-aspect-buttom';
-  toggleAspectButton.title = 'toggle aspect ratio between 1:1:1 and original';
-  toggleAspectButton.classList.add('material-icons');
-  toolbarDom.appendChild(toggleAspectButton);
-
-  var toggleOrthoButton = document.createElement('i');
-  toggleOrthoButton.innerText = 'call_merge';
-  toggleOrthoButton.id = 'toggle-ortho-buttom';
-  toggleOrthoButton.title = 'toggle between orthographic and perspective camera';
-  toggleOrthoButton.classList.add('material-icons');
-  toolbarDom.appendChild(toggleOrthoButton);
-
-  var datumDisplay = document.createElement('div');
-  datumDisplay.id = 'datum-display';
-  overlayDom.appendChild(datumDisplay);
-
-  var _mouse;
-  var _raycaster;
-
-  function syncGeometryWithAes() {
-    // animate the _points
-    for (var i in _points) {
-      let ii = i;
-      let a = {
-        x: _points[ii].position.x,
-        y: _points[ii].position.y,
-        z: _points[ii].position.z
-      };
-      let b = {
-        x: _aes.x[ii],
-        y: _aes.y[ii],
-        z: _aes.z[ii]
-      };
-
-      (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){ _points[ii].position.set(this.x, this.y, this.z); })
-        .start();
-
-      // animate the crosshairs
-      if (_points[ii] === _selectedObj) {
-        (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
-          .onUpdate(function(){
-            _crosshairs.position.set(this.x, this.y, this.z);
-          })
-          .start();
-      }
-    }
-
-
-    // animate the floor
-    var newFloorVertices = [
-      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.lo },
-      { x: _aes.x.hi, y: _aes.y.lo, z: _aes.z.lo },
-      { x: _aes.x.hi, y: _aes.y.lo, z: _aes.z.hi },
-      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.hi },
-      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.lo }
-    ];
-
-    for (var i in floor.geometry.vertices) {
-      let ii = i;
-      let a = {
-        x: floor.geometry.vertices[ii].x,
-        y: floor.geometry.vertices[ii].y,
-        z: floor.geometry.vertices[ii].z
-      };
-      let b = newFloorVertices[ii];
-
-      (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){
-          floor.geometry.vertices[ii].set(this.x, this.y, this.z);
-          floor.geometry.verticesNeedUpdate = true;
-        })
-        .start();
-    }
-
-  }
-
-  this.plot = function(data_, mapping_) {
-    _points = [];
-    _mouse = new THREE.Vector2(Infinity, Infinity);
-    _raycaster = new THREE.Raycaster();
-    _selectedObj = null;
-
-
-    var keyboard = new THREEx.KeyboardState();
-
-
-    //------------------------- Remap AES -------------------------//
-
-    _aes = new ZP.Aes(data_, mapping_);
-    if (_aes.legendDom) legendDiv.appendChild(_aes.legendDom);
-
-    //------------------------ Handle events ----------------------//
-
-    
-    resetCameraButton.addEventListener('click', function(e) {
-      _orbit.moveToOriginal();
-
-    });
-
-    toggleAspectButton.addEventListener('click', function(e) {
-      if (_aspect_original) {
-        _aes.changeAspectTo(ZP.ASPECT.ORIGINAL);
-        toggleAspectButton.classList.remove('activated');
-        _aspect_original = false;
-      } else {
-        _aes.changeAspectTo(ZP.ASPECT.EQUAL);
-        toggleAspectButton.classList.add('activated');
-        _aspect_original = true;
-      }
-      syncGeometryWithAes();
-    });
-
-    toggleOrthoButton.addEventListener('click', function(e) {
-      if (_ortho == 'none') {
-        _ortho_camera.position.set( 0, 1000, 0 );
-        _ortho_camera.up.set( 1, 0, 0 );
-        _ortho_camera.lookAt(new THREE.Vector3(0, 0, 0));
-        _ortho_camera.zoom = 1
-        _ortho_camera.updateProjectionMatrix();
-
-        _ortho_orbit.target = new THREE.Vector3(0, 0, 0);
-        _ortho_orbit.enabled = true;
-        _orbit.enabled = false;
-
-        _ortho = 'z';
-      } else if (_ortho == 'z') {
-        _ortho_camera.position.set( -1000, 0, 0 );
-        _ortho_camera.up.set( 0, 1, 0 );
-        _ortho_camera.lookAt(new THREE.Vector3(0, 0, 0));
-        _ortho_camera.zoom = 1
-        _ortho_camera.updateProjectionMatrix();
-
-        _ortho_orbit.target = new THREE.Vector3(0, 0, 0);
-        _ortho_orbit.enabled = true;
-        _orbit.enabled = false;
-
-        _ortho = 'y';
-      } else if (_ortho == 'y') {
-        _ortho_camera.position.set( 0, 0, -1000 );
-        _ortho_camera.up.set( 0, 1, 0 );
-        _ortho_camera.lookAt(new THREE.Vector3(0, 0, 0));
-        _ortho_camera.zoom = 1
-        _ortho_camera.updateProjectionMatrix();
-
-        _ortho_orbit.target = new THREE.Vector3(0, 0, 0);
-        _ortho_orbit.enabled = true;
-        _orbit.enabled = false;
-
-        _ortho = 'x';
-      } else if (_ortho == 'x') {
-        _ortho = 'none';
-
-        _ortho_orbit.enabled = false;
-        _orbit.enabled = true;
-      }
-    });
-
-    el_.addEventListener('keypress', function(e) {
-      switch (e.key) {
-        case 'p':
-          _stats.domElement.hidden = !_stats.domElement.hidden;
-          break;
-        default:
-          break;
-      }
-    });
-
-    //-------------------------------------------------------------//
-
-
-    //_scene.fog = new THREE.Fog(0xffffff, 400, 1000);
-
-    _scene.add( _camera );
-
-    _renderer.domElement.addEventListener('mousemove', function(e) {
-      _mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-      _mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
-    });
-
-    _renderer.domElement.addEventListener('dblclick', function(e) {
-      let undimmed_points = [];
-      let levels = _aes.scale.levels;
-      let mapping = _aes.scale.mapping;
-
-      for (let i in levels) {
-        let l = levels[i];
-        let ids = mapping[l].indices;
-        if (!mapping[l].dimmed) {
-          for (let j=0; j<ids.length; j++) {
-            undimmed_points.push(_points[ids[j]]);
-          }
-        }
-      }
-      let undimmed_points_flatten = [].concat.apply([], undimmed_points);
-
-      if (_ortho == 'none') {
-        _raycaster.setFromCamera( _mouse, _camera );
-      } else {
-        _raycaster.setFromCamera( _mouse, _ortho_camera );
-      }
-      var intersects = _raycaster.intersectObjects( undimmed_points );
-      if (intersects.length > 0) {
-        if (intersects[0].object != _selectedObj) {
-          _selectedObj = intersects[0].object;
-          var outputs = [];
-          for (var prop in _selectedObj.datum) {
-            outputs.push(prop + ' = ' + _selectedObj.datum[prop]);
-          }
-          datumDisplay.innerText = outputs.join('\n');
-          _crosshairs.position.copy(_selectedObj.position);
-          _crosshairs.visible = true;
-        }
-      } else {
-        _selectedObj = null;
-        datumDisplay.innerText = '';
-        _crosshairs.visible = false;
-      }
-    });
-
-    container.appendChild( _renderer.domElement );
-
-    _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0));
-    _orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
-    _orbit.enableDamping = true;
-    _orbit.dampingFactor = 0.4;
-    _orbit.update();
-
-    _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0));
-    _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
-    _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT };
-    _ortho_orbit.enabled = false;
-    _ortho_orbit.enableRotate = false;
-    _ortho_orbit.enableDamping = true;
-    _ortho_orbit.dampingFactor = 0.4;
-    _ortho_orbit.update();
-
-    _stats = new Stats();
-    _stats.domElement.style.position = 'absolute';
-    _stats.domElement.style.bottom = '0px';
-    _stats.domElement.style.zIndex = 100;
-    _stats.domElement.hidden = true;
-    container.appendChild( _stats.domElement );
-
-    let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
-    let floorGtry = new THREE.Geometry();
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi, _aes.y.lo, _aes.z.lo));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi, _aes.y.lo, _aes.z.hi));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.hi));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
-    floor = new THREE.Line(floorGtry, floorMtrl);
-    _scene.add(floor);
-
-    // Sprites
-
-    let dotSize = Math.cbrt(7.5 + 60000 / _aes.index.length);
-    
-    for (var i in _aes.index) {
-      var x = _aes.x[i];
-      var y = _aes.y[i];
-      var z = _aes.z[i];
-      var material = _aes.material[i];
-
-      var datum = {};
-      // note that _index is 1-based
-      datum._index = parseInt(i)+1;
-      for (var prop in data_) {
-        datum[prop] = data_[prop][i];
-      }
-
-      var discSprt = new THREE.Sprite( material );
-      discSprt.position.set( x, y, z );
-      discSprt.scale.set( dotSize, dotSize, 1 );
-      discSprt.datum = datum;
-      _scene.add( discSprt );
-
-      _points.push(discSprt);
-    }
-
-    // overlay scene
-
-    var crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON);
-    crosshairsTxtr.needsUpdate = true;
-    var crosshairsMtrl = new THREE.SpriteMaterial({
-      map: crosshairsTxtr,
-      color: new THREE.Color('#000000')
-    });
-    _crosshairs = new THREE.Sprite( crosshairsMtrl );
-    _crosshairs.position.set( Infinity, Infinity, Infinity );
-    _crosshairs.visible = false;
-    _crosshairs.tweenObj = { size: 10 };
-    _crosshairs.tween = new TWEEN.Tween(_crosshairs.tweenObj)
-    _crosshairs.tween.to({ size: 14 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
-      .onUpdate(function(){ _crosshairs.scale.set(this.size, this.size, 1) })
-      .start()
-    _scene_overlay.add( _crosshairs );
-
-    animate();
-
-    function animate() {
-      requestAnimationFrame( animate );
-      render();   
-      update();
-    }
-
-    function update() {
-      TWEEN.update();
-      _orbit.update();
-      _stats.update();
-    }
-
-    function render() {
-      let render_camera = _ortho == 'none' ? _camera : _ortho_camera;
-      _renderer.clear();
-      _renderer.render( _scene, render_camera );
-      _renderer.clearDepth();
-      _renderer.render( _scene_overlay, render_camera );
-    }
-  };
-
-  this.resize = function(width, height) {
-    _renderer.setSize( width, height );
-
-    _camera.aspect = width / height;
-    _camera.updateProjectionMatrix();
-
-    _ortho_camera.left = width / height * -ZP.ORTHO_SHRINK;
-    _ortho_camera.right = width / height * ZP.ORTHO_SHRINK;
-    _ortho_camera.top = ZP.ORTHO_SHRINK;
-    _ortho_camera.bottom = -ZP.ORTHO_SHRINK;
-    _ortho_camera.updateProjectionMatrix();
-  };
 }
 
