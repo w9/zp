@@ -25,6 +25,7 @@ ZP.VIEW_ANGLE = 45;
 ZP.ORTHO_SHRINK = 180;
 ZP.NEAR = 0.1;
 ZP.FAR = 20000;
+ZP.FLOOR_MARGIN = 2;
 
 ZP.POINT_ICON = document.createElement('img');
 ZP.POINT_ICON.src = 'data:image/png;base64,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';
@@ -301,6 +302,8 @@ ZP.ZP = function(el_, width_, height_) {
   var _current_aes_name;
   var _current_aes;
 
+  var _dot_size;
+
   let ar = width_ / height_;
   var _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR );
   _camera.position.set( -400, 0, -130 );
@@ -390,11 +393,11 @@ ZP.ZP = function(el_, width_, height_) {
 
     // animate the floor
     var newFloorVertices = [
-      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.lo },
-      { x: _aes.x.hi, y: _aes.y.lo, z: _aes.z.lo },
-      { x: _aes.x.hi, y: _aes.y.lo, z: _aes.z.hi },
-      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.hi },
-      { x: _aes.x.lo, y: _aes.y.lo, z: _aes.z.lo }
+      { x: _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN },
+      { x: _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN },
+      { x: _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN },
+      { x: _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN },
+      { x: _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN }
     ];
 
     for (var i in _floor.geometry.vertices) {
@@ -427,7 +430,6 @@ ZP.ZP = function(el_, width_, height_) {
 
     _data_rows = ZP.colsToRows(data_);
     _data_indices = ZP.range0(this.data.length);
-
 
     //------------------------- Remap AES -------------------------//
 
@@ -629,17 +631,17 @@ ZP.ZP = function(el_, width_, height_) {
 
     let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
     let floorGtry = new THREE.Geometry();
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi, _aes.y.lo, _aes.z.lo));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.hi, _aes.y.lo, _aes.z.hi));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.hi));
-        floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
+        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN ));
+        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN ));
+        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN ));
+        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN ));
+        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN ));
     _floor = new THREE.Line(floorGtry, floorMtrl);
     _scene.add(_floor);
 
     // Sprites
 
-    let dotSize = Math.cbrt(7.5 + 60000 / _data_indices.length);
+    _dot_size = Math.cbrt(7.5 + 60000 / _data_indices.length);
     
     for (let i of _data_indices) {
       // TODO: deal with nulls in these columns
@@ -652,7 +654,7 @@ ZP.ZP = function(el_, width_, height_) {
       let color = _current_aes.color ? _current_aes.color.values[i] : ZP.DEFAULT_COLOR;
       let discSprt = new THREE.Sprite({ map: _disc_txtr, color: new THREE.Color(color), fog: true });
       discSprt.position.set( x, y, z );
-      discSprt.scale.set( dotSize, dotSize, 1 );
+      discSprt.scale.set( _dot_size, _dot_size, 1 );
       discSprt.datum = datum;
       _scene.add( discSprt );
 
