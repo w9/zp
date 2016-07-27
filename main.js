@@ -18,7 +18,7 @@ function getJSON(url, callback) {
 getJSON('example_query.json', function(err, p) {
   if (err != null) {
   } else {
-    zp.plot(p.data, p.mapping);
+    zp.plot(p.data, p.mappings);
     window.addEventListener('resize', zp.resize(window.innerWidth, window.innerHeight));
   }
 });

@@ -39,16 +39,14 @@ ZP.BUTTERFLY_IMG.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAX0AAAEVCA
 ZP.normalize11 = function(a, scale, offset) {
   scale = scale || 1;
   offset = offset || 0;
-  var i = Math.min.apply(null, a);
-  var x = Math.max.apply(null, a);
-  var aa = a.map(function(k){return ((k-i)/(x-i)*2-1)*scale + offset});
-  aa.lo = -scale + offset;
-  aa.hi = scale + offset;
+  let i = Math.min.apply(null, a);
+  let x = Math.max.apply(null, a);
+  let aa = a.map(function(k){return ((k-i)/(x-i)*2-1)*scale + offset});
   return aa;
 }
 
 ZP.range0 = function(hi) {
-  a = [];
+  let a = [];
   for (var i = 0; i < hi; i++) {
     a.push(i);
   }
@@ -63,12 +61,13 @@ ZP.range0 = function(hi) {
  * serialized into JSON.
  */
 ZP.colsToRows = function(cols_) {
+  var _cols = JSON.parse(JSON.stringify(cols_));
   var _rows = [];
   while (true) {
     let flag = true;
     let row = {};
-    for (let colName in cols_) {
-      let value = cols_[colName].shift();
+    for (let colName in _cols) {
+      let value = _cols[colName].shift();
       if (typeof(value) === 'undefined') {
         value = null;
       } else {
@@ -232,7 +231,7 @@ ZP.ScaleColorBoolean = function(vec_, name_) {
 /**
  * Dim "NA" data by default.
  *
- * <ScaleColorContinous>
+ * <ScaleColorContinuous>
  *                       . values    = [ '#f1f1f1', '#f1a313', ... ]
  *                       . legend    = <div>
  */
@@ -263,7 +262,7 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
  *       . z
  *       . color [optional]
  */
-ZP.Aes = function(data_, attrs_) {
+ZP.Aes = function(attrs_) {
   if (!attrs_.x || !attrs_.y || !attrs_.z) {
     throw new Error("x, y and z are required in the mapping!");
   }
@@ -294,6 +293,8 @@ ZP.ZP = function(el_, width_, height_) {
   var _floor;
   var _crosshairs;
   var _ortho = 'none';
+
+  var _arena_dims;
 
   var _disc_txtr;
 
@@ -361,27 +362,40 @@ ZP.ZP = function(el_, width_, height_) {
   var _mouse;
   var _raycaster;
 
-  function syncGeometryWithAes() {
+  //--------------------- Helper Functions ----------------------//
+
+  var _change_aspect_to = function(aspect) {
+    if (!aspect || aspect == ZP.ASPECT.EQUAL) {
+      _arena_dims = { x: 100, y: 100, z: 100 };
+    } else if (aspect == ZP.ASPECT.ORIGINAL) {
+      let rx = _current_aes.x.span;
+      let ry = _current_aes.y.span;
+      let rz = _current_aes.z.span;
+      let coef = 300 / (rx + ry + rz);
+      _arena_dims = { x: coef * rx, y: coef * ry, z: coef * rz };
+    }
+  }
+
+  var _update_geometry = function() {
     // animate the _points
-    for (var i in _points) {
-      let ii = i;
+    for (let i in _points) {
       let a = {
-        x: _points[ii].position.x,
-        y: _points[ii].position.y,
-        z: _points[ii].position.z
+        x: _points[i].position.x,
+        y: _points[i].position.y,
+        z: _points[i].position.z
       };
       let b = {
-        x: _current_aes.x.values[ii],
-        y: _current_aes.y.values[ii],
-        z: _current_aes.z.values[ii]
+        x: _current_aes.x.values[i],
+        y: _current_aes.y.values[i],
+        z: _current_aes.z.values[i]
       };
 
       (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){ _points[ii].position.set(this.x, this.y, this.z); })
+        .onUpdate(function(){ _points[i].position.set(this.x, this.y, this.z); })
         .start();
 
       // animate the crosshairs
-      if (_points[ii] === _selected_obj) {
+      if (_points[i] === _selected_obj) {
         (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){
             _crosshairs.position.set(this.x, this.y, this.z);
@@ -390,28 +404,33 @@ ZP.ZP = function(el_, width_, height_) {
       }
     }
 
-
     // animate the floor
-    var newFloorVertices = [
-      { x: _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN },
-      { x: _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN },
-      { x: _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN },
-      { x: _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN },
-      { x: _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, y: _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, z: _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN }
+
+    let m = _dot_size/2 + ZP.FLOOR_MARGIN;
+    let dims = {
+      x: _arena_dims.x + m,
+      y: _arena_dims.y + m,
+      z: _arena_dims.z + m
+    };
+    let vs = [
+      { x: - dims.x, y: - dims.y, z: - dims.z },
+      { x: + dims.x, y: - dims.y, z: - dims.z },
+      { x: + dims.x, y: - dims.y, z: + dims.z },
+      { x: - dims.x, y: - dims.y, z: + dims.z },
+      { x: - dims.x, y: - dims.y, z: - dims.z }
     ];
 
-    for (var i in _floor.geometry.vertices) {
-      let ii = i;
+    for (let i in _floor.geometry.vertices) {
       let a = {
-        x: _floor.geometry.vertices[ii].x,
-        y: _floor.geometry.vertices[ii].y,
-        z: _floor.geometry.vertices[ii].z
+        x: _floor.geometry.vertices[i].x,
+        y: _floor.geometry.vertices[i].y,
+        z: _floor.geometry.vertices[i].z
       };
-      let b = newFloorVertices[ii];
+      let b = vs[i];
 
       (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
-          _floor.geometry.vertices[ii].set(this.x, this.y, this.z);
+          _floor.geometry.vertices[ii].set(this.y, this.z, this.x);
           _floor.geometry.verticesNeedUpdate = true;
         })
         .start();
@@ -429,7 +448,7 @@ ZP.ZP = function(el_, width_, height_) {
     _disc_txtr.needsUpdate = true;
 
     _data_rows = ZP.colsToRows(data_);
-    _data_indices = ZP.range0(this.data.length);
+    _data_indices = ZP.range0(_data_rows.length);
 
     //------------------------- Remap AES -------------------------//
 
@@ -451,10 +470,10 @@ ZP.ZP = function(el_, width_, height_) {
     }
 
     _aeses = {};
-    for (m in mappings_) {
+    for (let m in mappings_) {
       let mapping = mappings_[m];
       let attrs = {};
-      for (a in mapping) {
+      for (let a in mapping) {
         let col = mapping[a];
         if (scales[col][a]) {
           attrs[a] = scales[col][a];
@@ -492,8 +511,11 @@ ZP.ZP = function(el_, width_, height_) {
 
     // TODO: draw legends for switching between aeses
 
-    _curent_aes_name = _aeses_names[0];
-    _curent_aes = _aeses[_current_aes_name];
+    _current_aes_name = _aeses_names[0];
+    _current_aes = _aeses[_current_aes_name];
+
+    _change_aspect_to(ZP.ASPECT.ORIGINAL);
+
 
     //------------------------ Handle events ----------------------//
 
@@ -504,15 +526,15 @@ ZP.ZP = function(el_, width_, height_) {
 
     toggleAspectButton.addEventListener('click', function(e) {
       if (_aspect_original) {
-        _aes.changeAspectTo(ZP.ASPECT.ORIGINAL);
+        _change_aspect_to(ZP.ASPECT.ORIGINAL);
         toggleAspectButton.classList.remove('activated');
         _aspect_original = false;
       } else {
-        _aes.changeAspectTo(ZP.ASPECT.EQUAL);
+        _change_aspect_to(ZP.ASPECT.EQUAL);
         toggleAspectButton.classList.add('activated');
         _aspect_original = true;
       }
-      syncGeometryWithAes();
+      _update_geometry();
     });
 
     toggleOrthoButton.addEventListener('click', function(e) {
@@ -629,13 +651,23 @@ ZP.ZP = function(el_, width_, height_) {
     _ortho_orbit.dampingFactor = 0.4;
     _ortho_orbit.update();
 
+    let m = _dot_size/2 + ZP.FLOOR_MARGIN;
+    let dims = {
+      x: _arena_dims.x + m,
+      y: _arena_dims.y + m,
+      z: _arena_dims.z + m
+    };
+    let vs = [
+      { x: - dims.x, y: - dims.y, z: - dims.z },
+      { x: + dims.x, y: - dims.y, z: - dims.z },
+      { x: + dims.x, y: - dims.y, z: + dims.z },
+      { x: - dims.x, y: - dims.y, z: + dims.z },
+      { x: - dims.x, y: - dims.y, z: - dims.z }
+    ];
+
     let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
     let floorGtry = new THREE.Geometry();
-        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN ));
-        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN ));
-        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.hi + _dot_size/2 + ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN ));
-        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.hi + _dot_size/2 + ZP.FLOOR_MARGIN ));
-        floorGtry.vertices.push(new THREE.Vector3( _current_aes.x.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.y.lo - _dot_size/2 - ZP.FLOOR_MARGIN, _current_aes.z.lo - _dot_size/2 - ZP.FLOOR_MARGIN ));
+    vs.map(v => floorGtry.vertices.push(new THREE.Vector3(v.y, v.z, v.x)));
     _floor = new THREE.Line(floorGtry, floorMtrl);
     _scene.add(_floor);
 
@@ -645,15 +677,15 @@ ZP.ZP = function(el_, width_, height_) {
     
     for (let i of _data_indices) {
       // TODO: deal with nulls in these columns
-      let x        = _current_aes.x.values[i];
-      let y        = _current_aes.y.values[i];
-      let z        = _current_aes.z.values[i];
+      let x        = _current_aes.x.values[i] * _arena_dims.x;
+      let y        = _current_aes.y.values[i] * _arena_dims.y;
+      let z        = _current_aes.z.values[i] * _arena_dims.z;
 
       let datum    = _data_rows[i];
 
       let color = _current_aes.color ? _current_aes.color.values[i] : ZP.DEFAULT_COLOR;
       let discSprt = new THREE.Sprite({ map: _disc_txtr, color: new THREE.Color(color), fog: true });
-      discSprt.position.set( x, y, z );
+      discSprt.position.set( x , y , z );
       discSprt.scale.set( _dot_size, _dot_size, 1 );
       discSprt.datum = datum;
       _scene.add( discSprt );
@@ -663,7 +695,7 @@ ZP.ZP = function(el_, width_, height_) {
 
     if (_current_aes.color) {
       legendDiv.innerHTML = '';
-      legendDiv.appendChild(_current_aes.legend);
+      legendDiv.appendChild(_current_aes.color.legend);
     }
 
     // overlay scene
@@ -719,179 +751,3 @@ ZP.ZP = function(el_, width_, height_) {
     _ortho_camera.updateProjectionMatrix();
   };
 }
-
-
-
-
-
-ZP.AesOld = function(data_, mapping_, aspect_) {
-  var _this = this;
-
-  var discTxtr = new THREE.Texture(ZP.POINT_ICON);
-  discTxtr.needsUpdate = true;
-
-  this.index = ZP.range0(data_[mapping_.x].length);
-
-  // note the axes are rotated for the gl space
-  this.z = data_[mapping_.x];
-  this.x = data_[mapping_.y];
-  this.y = data_[mapping_.z];
-
-  this.xMax = Math.max.apply(null, this.x);
-  this.xMin = Math.min.apply(null, this.x);
-  this.xRange = this.xMax - this.xMin;
-  this.yMax = Math.max.apply(null, this.y);
-  this.yMin = Math.min.apply(null, this.y);
-  this.yRange = this.yMax - this.yMin;
-  this.zMax = Math.max.apply(null, this.z);
-  this.zMin = Math.min.apply(null, this.z);
-  this.zRange = this.zMax - this.zMin;
-
-  this.data = data_;
-  this.mapping = mapping_;
-  // TODO: try combining the next two lines
-  var aspect = aspect_ || ZP.ASPECT.ORIGINAL;
-  this.changeAspectTo(aspect);
-  this.legendDom = null;
-
-  function dimGroup(m) {
-      m.dimmed = true;
-      m.material.opacity = 0.1;
-      m.legendItem.classList.add('dimmed');
-  }
-
-  function lightGroup(m) {
-      m.dimmed = false;
-      m.material.opacity = 1;
-      m.legendItem.classList.remove('dimmed');
-  }
-
-  function toggleAllGroups() {
-    var m = _this.scale.mapping;
-
-    var allDimmed = true;
-
-    for (var i in m) {
-      if (!m[i].dimmed) {
-        allDimmed = false;
-        break;
-      }
-    }
-
-    if (allDimmed) {
-      for (var i in m) {
-        lightGroup(m[i]);
-      }
-    } else {
-      for (var i in m) {
-        dimGroup(m[i]);
-      }
-    }
-  }
-
-  function toggleGroup(f) {
-    var m = _this.scale.mapping[f];
-    if (m) {
-      m.dimmed ? lightGroup(m) : dimGroup(m);
-    }
-  }
-
-  function onlyShowOneGroup(f) {
-    var m = _this.scale.mapping;
-
-    for (var i in m) {
-      i == f ? lightGroup(m[i]) : dimGroup(m[i]);
-    }
-  }
-
-  function drawLegendDiscrete(aes) {
-    var scale = aes.scale;
-    var legendTitle = aes.mapping.color;
-    var colorLegend = document.createElement('div');
-    var mapping = scale.mapping;
-    var levels = scale.levels;
-
-    colorLegend.innerHTML = '<h2>' + legendTitle + '</h2>';
-    for (let i in levels) {
-      let level = levels[i];
-      colorLegend.appendChild(mapping[level].legendItem);
-    }
-    colorLegend.addEventListener('dblclick', function(e){toggleAllGroups()});
-    return colorLegend;
-  }
-
-  function convertFactorsToColors(fs) {
-    // scale . levels = ['a', 'b']
-    //
-    //       . mapping = { 'a': { color: "red",  material: red,  indices: [0,1,4,...], legend: <red_leg>,  dimmed: false },
-    //                     'b': { color: "blue", material: blue, indices: [2,3,5,...], legend: <blue_leg>, dimmed: false }}
-    //
-    //       . materials = [ red, blue, blue, red, ... ]
-
-    let levels = [];
-    for (let i=0; i<fs.length; i++) {
-      let f = fs[i] === null ? null : fs[i].toString();
-      if (levels.indexOf(f) < 0) {
-        levels.push(f);
-      }
-    }
-    levels = levels.sort();
-    
-    let mapping = {};
-    for (let i=0; i<levels.length; i++) {
-      let f = levels[i];
-
-      var color = ZP.COLOR_PALETTE[i];
-      var material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
-
-      var item = document.createElement('div');
-      item.classList.add('item');
-      item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + (f === null ? 'none' : f);
-      let ff = f;
-      item.addEventListener('click', function(e){e.ctrlKey ? onlyShowOneGroup(ff) : toggleGroup(ff)});
-      item.addEventListener('dblclick', function(e){e.stopPropagation()});
-
-      mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
-    }
-
-    let materials = [];
-    for (let i=0; i<fs.length; i++) {
-      let f = fs[i] === null ? null : fs[i].toString();
-      materials.push(mapping[f].material);
-      mapping[f].indices.push(i);
-    }
-
-    return { materials: materials, mapping: mapping, levels: levels };
-  }
-
-
-  if ('color' in mapping_) {
-    this.scale = convertFactorsToColors(data_[mapping_.color]);
-    this.material = this.scale.materials;
-    this.legendDom = drawLegendDiscrete(this);
-  } else {
-    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(ZP.COLOR_PALETTE[0]), fog: true } );
-    this.material = this.index.map(function(){return material});
-  }
-
-  toggleGroup(null);
-}
-
-ZP.AesOld.prototype.changeAspectTo = function(aspect) {
-  if (!aspect || aspect == ZP.ASPECT.EQUAL) {
-    this.changeAspectToXYZ(100, 100, 100);
-  } else if (aspect == ZP.ASPECT.ORIGINAL) {
-    let rx = this.xRange;
-    let ry = this.yRange;
-    let rz = this.zRange;
-    let coef = 100 / Math.cbrt(rx * ry * rz);
-    this.changeAspectToXYZ(coef * rx, coef * ry, coef * rz);
-  }
-}
-
-ZP.AesOld.prototype.changeAspectToXYZ = function(xx, yy, zz) {
-  this.x = ZP.normalize11(this.x, xx);
-  this.y = ZP.normalize11(this.y, yy);
-  this.z = ZP.normalize11(this.z, zz);
-}
-
