@@ -415,22 +415,22 @@ ZP.ZP = function(el_, width_, height_) {
     let vs = [
       { x: - dims.x, y: - dims.y, z: - dims.z },
       { x: + dims.x, y: - dims.y, z: - dims.z },
-      { x: + dims.x, y: - dims.y, z: + dims.z },
-      { x: - dims.x, y: - dims.y, z: + dims.z },
+      { x: + dims.x, y: + dims.y, z: - dims.z },
+      { x: - dims.x, y: + dims.y, z: - dims.z },
       { x: - dims.x, y: - dims.y, z: - dims.z }
     ];
 
     for (let i in _floor.geometry.vertices) {
       let a = {
-        x: _floor.geometry.vertices[i].x,
-        y: _floor.geometry.vertices[i].y,
-        z: _floor.geometry.vertices[i].z
+        y: _floor.geometry.vertices[i].x,
+        z: _floor.geometry.vertices[i].y,
+        x: _floor.geometry.vertices[i].z
       };
       let b = vs[i];
 
       (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
-          _floor.geometry.vertices[ii].set(this.y, this.z, this.x);
+          _floor.geometry.vertices[i].set(this.y, this.z, this.x);
           _floor.geometry.verticesNeedUpdate = true;
         })
         .start();
@@ -651,6 +651,8 @@ ZP.ZP = function(el_, width_, height_) {
     _ortho_orbit.dampingFactor = 0.4;
     _ortho_orbit.update();
 
+    _dot_size = Math.cbrt(7.5 + 60000 / _data_indices.length);
+
     let m = _dot_size/2 + ZP.FLOOR_MARGIN;
     let dims = {
       x: _arena_dims.x + m,
@@ -660,10 +662,13 @@ ZP.ZP = function(el_, width_, height_) {
     let vs = [
       { x: - dims.x, y: - dims.y, z: - dims.z },
       { x: + dims.x, y: - dims.y, z: - dims.z },
-      { x: + dims.x, y: - dims.y, z: + dims.z },
-      { x: - dims.x, y: - dims.y, z: + dims.z },
+      { x: + dims.x, y: + dims.y, z: - dims.z },
+      { x: - dims.x, y: + dims.y, z: - dims.z },
       { x: - dims.x, y: - dims.y, z: - dims.z }
     ];
+
+    console.log(_arena_dims);
+    console.log(vs);
 
     let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
     let floorGtry = new THREE.Geometry();
@@ -672,8 +677,6 @@ ZP.ZP = function(el_, width_, height_) {
     _scene.add(_floor);
 
     // Sprites
-
-    _dot_size = Math.cbrt(7.5 + 60000 / _data_indices.length);
     
     for (let i of _data_indices) {
       // TODO: deal with nulls in these columns
