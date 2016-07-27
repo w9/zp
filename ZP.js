@@ -74,7 +74,8 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
 
   var _dimmed = {};
 
-  var _palette = palette_ || ZP.COLOR_PALETTE;
+  // this array will later be destroyed so don't use reference directly
+  var _palette = palette_.slice() || ZP.COLOR_PALETTE.slice();
 
   var _levels = Array.from(new Set(vec_)).sort();
 
@@ -93,36 +94,39 @@ ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
     }
   };
 
-  var _mapping = {};
-  for (let i=0; i<_levels.length; i++) {
-    let f = _levels[i];
 
-    let color = _palette[i];
-    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
+  var _legend = document.createElement('div');
+  _legend.innerHTML = '<h2>' + legendTitle + '</h2>';
+
+  let itemContainer = document.createElement('div');
+  itemContainer.id = 'item-container';
+  _legend.appendChild(itemContainer);
+
+  for (let l of levels) {
+    let color = _palette.shift();
 
     let item = document.createElement('div');
     item.classList.add('item');
-    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
-    let ff = f;
-    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleLevel(ff)});
-    item.addEventListener('dblclick', function(e){e._stopPropagation()});
+    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + l;
+    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneLevel(l) : _toggleLevel(l)});
+    item.addEventListener('dblclick', function(e){e.stopPropagation()});
+    itemContainer.appendChild(_legendItem[l]);
 
-    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
+    _color[l] = color;
+    _legendItem[l] = item;
+    _indices[l] = [];
+    _dimmed[l] = false;
   }
 
-  let materials = [];
-  for (let i=0; i<vec_.length; i++) {
-    let f = vec_[i].toString();
-    materials.push(_mapping[f].material);
-    _mapping[f].indices.push(i);
+  _legend.addEventListener('dblclick', function(e){toggleAllGroups()});
+  return _legend;
+
+  for (let f of vec_) {
+    _values.push(_color[f]);
   }
 
-  this.mapping       = _mapping      ;
-  this.getIndices    = _getIndices   ;
-  this.getLegendItem = _getLegendItem;
-  this.getLegend     = _getLegend    ;
-  this.isDimmed      = _isDimmed     ;
-  this.getColorHex   = _getColorHex  ;
+  this.legend = _legend;
+  this.values = _values;
 }
   
 
