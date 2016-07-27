@@ -65,71 +65,65 @@ ZP.range0 = function(hi) {
  * changes, which makes it sound less reliable, but not really as one could just fire an event changing
  * the dimming states of **all** points.
  *
- * <ScaleColorDiscrete> . materials = { a: <material>, b: <material> }
- *                      . indices   = { a: [0, 1, 3, ... ], b: [2, 4, ... ] }
- *                      . hexes     = { a: '#123123', b: '423433' }
- *                      . levels    = ['a', 'b']
+ * <ScaleColorDiscrete>
+ *                      . values    = [ '#f1f1f1', '#f1a313', ... ]
+ *                      . legend    = <div>
  */
-//ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
-//  var _this = this;
-//
-//  var _palette = palette_ || ZP.COLOR_PALETTE;
-//
-//  var _levels = [];
-//  for (let i=0; i<vec_.length; i++) {
-//    let f = vec_[i].toString();
-//    if (_levels.indexOf(f) < 0) {
-//      _levels.push(f);
-//    }
-//  }
-//  _levels = _levels.sort();
-//
-//  var _toggleLevel = function(l) {
-//    for (i of _this.indices) {
-//    }
-//    let material = _this.get(f);
-//    material.dimmed ? _lightMaterial(material) : _dimMaterial(material);
-//  }
-//
-//  var _onlyShowOneGroup = function(f) {
-//    var m = _this.scale.mapping;
-//
-//    for (var i in m) {
-//      i == f ? lightGroup(m[i]) : dimGroup(m[i]);
-//    }
-//  }
-//
-//  var _mapping = {};
-//  for (let i=0; i<_levels.length; i++) {
-//    let f = _levels[i];
-//
-//    let color = _palette[i];
-//    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
-//
-//    let item = document.createElement('div');
-//    item.classList.add('item');
-//    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
-//    let ff = f;
-//    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleLevel(ff)});
-//    item.addEventListener('dblclick', function(e){e._stopPropagation()});
-//
-//    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
-//  }
-//
-//  let materials = [];
-//  for (let i=0; i<vec_.length; i++) {
-//    let f = vec_[i].toString();
-//    materials.push(_mapping[f].material);
-//    _mapping[f].indices.push(i);
-//  }
-//
-//  this.mapping       = _mapping      ;
-//  this.getIndices    = _getIndices   ;
-//  this.getLegendItem = _getLegendItem;
-//  this.getLegend     = _getLegend    ;
-//  this.isDimmed      = _isDimmed     ;
-//  this.getColorHex   = _getColorHex  ;
-//}
+ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
+  var _this = this;
+
+  var _dimmed = {};
+
+  var _palette = palette_ || ZP.COLOR_PALETTE;
+
+  var _levels = Array.from(new Set(vec_)).sort();
+
+  var _changeLevel = function(l, action_) {
+    _dimmed[l] = action_ == 'dim' ? true : false;
+    this.dispatchEvent(new CustomEvent(action_, { detail: _indices[l] }));
+  };
+  
+  var _toggleLevel = function(l) {
+    _changeLevel(l, _dimmed[l] ? 'light' : 'dim');
+  };
+
+  var _onlyShowOneLevel = function(l) {
+    for (let level of _levels) {
+      _changeLevel(level, level == l ? 'light' : 'dim');
+    }
+  };
+
+  var _mapping = {};
+  for (let i=0; i<_levels.length; i++) {
+    let f = _levels[i];
+
+    let color = _palette[i];
+    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
+
+    let item = document.createElement('div');
+    item.classList.add('item');
+    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
+    let ff = f;
+    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleLevel(ff)});
+    item.addEventListener('dblclick', function(e){e._stopPropagation()});
+
+    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
+  }
+
+  let materials = [];
+  for (let i=0; i<vec_.length; i++) {
+    let f = vec_[i].toString();
+    materials.push(_mapping[f].material);
+    _mapping[f].indices.push(i);
+  }
+
+  this.mapping       = _mapping      ;
+  this.getIndices    = _getIndices   ;
+  this.getLegendItem = _getLegendItem;
+  this.getLegend     = _getLegend    ;
+  this.isDimmed      = _isDimmed     ;
+  this.getColorHex   = _getColorHex  ;
+}
   
 
   /**
