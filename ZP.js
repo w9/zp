@@ -54,6 +54,117 @@ ZP.range0 = function(hi) {
 }
 
 
+/**
+ * The ultimate purpose of a scale is to map between the data and the aesthetic values in **O(1)** time.
+ *
+ * The reason we need scales as independent objects is because we need polymorphism, which
+ * means that it makes no sense to have them in the first place if they each have different
+ * properties (handles).
+ *
+ * The change of the dimming status are implemented through event firing. The event only contains the
+ * changes, which makes it sound less reliable, but not really as one could just fire an event changing
+ * the dimming states of **all** points.
+ *
+ * <ScaleColorDiscrete> . materials = { a: <material>, b: <material> }
+ *                      . indices   = { a: [0, 1, 3, ... ], b: [2, 4, ... ] }
+ *                      . hexes     = { a: '#123123', b: '423433' }
+ *                      . levels    = ['a', 'b']
+ */
+//ZP.ScaleColorDiscrete = function(name_, vec_, palette_) {
+//  var _this = this;
+//
+//  var _palette = palette_ || ZP.COLOR_PALETTE;
+//
+//  var _levels = [];
+//  for (let i=0; i<vec_.length; i++) {
+//    let f = vec_[i].toString();
+//    if (_levels.indexOf(f) < 0) {
+//      _levels.push(f);
+//    }
+//  }
+//  _levels = _levels.sort();
+//
+//  var _toggleLevel = function(l) {
+//    for (i of _this.indices) {
+//    }
+//    let material = _this.get(f);
+//    material.dimmed ? _lightMaterial(material) : _dimMaterial(material);
+//  }
+//
+//  var _onlyShowOneGroup = function(f) {
+//    var m = _this.scale.mapping;
+//
+//    for (var i in m) {
+//      i == f ? lightGroup(m[i]) : dimGroup(m[i]);
+//    }
+//  }
+//
+//  var _mapping = {};
+//  for (let i=0; i<_levels.length; i++) {
+//    let f = _levels[i];
+//
+//    let color = _palette[i];
+//    let material = new THREE.SpriteMaterial( { map: discTxtr, color: new THREE.Color(color), transparent: true, fog: true } );
+//
+//    let item = document.createElement('div');
+//    item.classList.add('item');
+//    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + f;
+//    let ff = f;
+//    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneGroup(ff) : _toggleLevel(ff)});
+//    item.addEventListener('dblclick', function(e){e._stopPropagation()});
+//
+//    _mapping[f] = { color: color, material: material, legendItem: item, indices: [], dimmed: false};
+//  }
+//
+//  let materials = [];
+//  for (let i=0; i<vec_.length; i++) {
+//    let f = vec_[i].toString();
+//    materials.push(_mapping[f].material);
+//    _mapping[f].indices.push(i);
+//  }
+//
+//  this.mapping       = _mapping      ;
+//  this.getIndices    = _getIndices   ;
+//  this.getLegendItem = _getLegendItem;
+//  this.getLegend     = _getLegend    ;
+//  this.isDimmed      = _isDimmed     ;
+//  this.getColorHex   = _getColorHex  ;
+//}
+  
+
+  /**
+   *
+   * <ScaleColorContinuous> . getMaterial       = function 23.4 -> <material>
+   *                        . getIndicesByRange = function (12.3, 23.4, true, true) -> [0, 1, 3, ... ],
+   *                        . getColorHex       = function 23.4 -> '#232343'
+   *                        . getLow            = -123.4
+   *                        . getHigh           = 123.4
+   *
+   * <ScaleContinuous> . getGLCoordinate   = function 23.4 -> 12.13
+   *                   . getIndicesByRange = function (12.3, 23.4, true, true) -> [0, 1, 3, ... ],
+   *                   . getLow            = -123.4
+   *                   . getHigh           = 123.4
+   *                                          
+   *
+   * _continuousColorScales = { avg_log_expr: <scale> }
+   * _discreteColorScales   = { group: <scale>, is_highly_expressed: <scale> }
+   * _continuousScales      = { pc1: <scale>, pc2: <scale>, pc3: <scale> }
+   *
+   * _aes1 . color      =   _discreteColorScales['group']
+   *       . x          =   _continuousScales['pc1']
+   *       . y          =   _continuousScales['pc2']
+   *       . z          =   _continuousScales['pc3']
+   *
+   * _aes2 . color      =   _discreteColorScales['group']
+   *       . x          =   _continuousScales['mds1']
+   *       . y          =   _continuousScales['mds2']
+   *       . z          =   _continuousScales['mds3']
+   *
+   * The legend is drawn by the plot function. The presentation is separated from the underlying data.
+   *
+   *
+   */
+
 
 
 
@@ -559,6 +670,7 @@ ZP.ZP = function(el_, width_, height_) {
         datum[prop] = data_[prop][i];
       }
 
+      console.log( [x, y, z].toString() );
       var discSprt = new THREE.Sprite( material );
       discSprt.position.set( x, y, z );
       discSprt.scale.set( dotSize, dotSize, 1 );
