@@ -668,7 +668,6 @@ ZP.ZP = function(el_, width_, height_) {
         datum[prop] = data_[prop][i];
       }
 
-      console.log( [x, y, z].toString() );
       var discSprt = new THREE.Sprite( material );
       discSprt.position.set( x, y, z );
       discSprt.scale.set( dotSize, dotSize, 1 );
