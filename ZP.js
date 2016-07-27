@@ -19,8 +19,8 @@ ZP = {};
 ZP.ASPECT = { EQUAL: 0, ORIGINAL: 1 };
 ZP.ASPECT_STATE = { NONE: 0, TRANSITIONING: 1 };
 
-ZP.DEFAULT_COLOR = ['#555555'];
-ZP.COLOR_PALETTE = ['#01a0e4','#db2d20','#01a252','#a16a94','#555555','#555555','#555555','#555555','#555555'];
+ZP.DEFAULT_COLOR = '#555555';
+ZP.COLOR_PALETTE = ['#01a0e4','#db2d20','#01a252','#a16a94'];
 ZP.VIEW_ANGLE = 45;
 ZP.ORTHO_SHRINK = 180;
 ZP.NEAR = 0.1;
@@ -53,6 +53,35 @@ ZP.range0 = function(hi) {
   }
   return a;
 }
+
+/**
+ * Unlike htmlwidgets.dataframeToD3, this function does minimal check, but it pads nulls when
+ * the arrays are not of the same length.
+ *
+ * "null" instead of "undefined" is used for representing an NA, because "undefined" cannot be
+ * serialized into JSON.
+ */
+ZP.colsToRows = function(cols_) {
+  var _rows = [];
+  while (true) {
+    let flag = true;
+    let row = {};
+    for (let colName in cols_) {
+      let value = cols_[colName].shift();
+      if (typeof(value) === 'undefined') {
+        value = null;
+      } else {
+        flag = false;
+      }
+      row[colName] = value;
+    }
+    // this loop ends when all cols are depleted
+    if (flag) break;
+    _rows.push(row);
+  }
+
+  return _rows;
+};
 
 
 /**
@@ -119,6 +148,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   for (let l of _levels) {
     let color = _palette.shift();
+    if (!color) color = ZP.DEFAULT_COLOR;
 
     let item = document.createElement('div');
     item.classList.add('item');
@@ -221,13 +251,18 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
  * a direct translation of the mapping_ input. Different Aes's can share scales
  * (via reference) to improve performance.
  *
+ * Note that data rows and indices are not part of any aes, instead they are
+ * global variables in ZP.ZP. This is because all columns are shown in the
+ * data info panel, always. That means the data rows are independent of
+ * current aes.
+ *
  * <Aes>
  *       . x
  *       . y
  *       . z
  *       . color [optional]
  */
-ZP.Aes = function(attrs_) {
+ZP.Aes = function(data_, attrs_) {
   if (!attrs_.x || !attrs_.y || !attrs_.z) {
     throw new Error("x, y and z are required in the mapping!");
   }
@@ -237,25 +272,14 @@ ZP.Aes = function(attrs_) {
   this.color = attrs_.color;
 };
 
-/**
- *
- * Aeses
- *
- *     unnamed_mapping
- *       . x          =   _continuousScales['pc1']
- *       . y          =   _continuousScales['pc2']
- *       . z          =   _continuousScales['pc3']
- *       . color      =   _discreteColorScales['group']
- *
- *     2 . x          =   _continuousScales['mds1']
- *       . y          =   _continuousScales['mds2']
- *       . z          =   _continuousScales['mds3']
- *       . color      =   _discreteColorScales['group']
- *
- *
- */
+
+
+
 ZP.ZP = function(el_, width_, height_) {
   var _aes;
+
+  var _data_rows;
+  var _data_indices;
 
   var _aspect_state = ZP.ASPECT_STATE.NONE;
   var _aspect_original = false;
@@ -264,14 +288,18 @@ ZP.ZP = function(el_, width_, height_) {
   var _scene_overlay = new THREE.Scene();
 
   var _orbit;
-  var _stats;
   var _points;
   var _selected_obj;
   var _floor;
   var _crosshairs;
   var _ortho = 'none';
 
+  var _disc_txtr;
+
   var _aeses;
+  var _aeses_names;
+  var _current_aes_name;
+  var _current_aes;
 
   let ar = width_ / height_;
   var _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR );
@@ -340,9 +368,9 @@ ZP.ZP = function(el_, width_, height_) {
         z: _points[ii].position.z
       };
       let b = {
-        x: _aes.x[ii],
-        y: _aes.y[ii],
-        z: _aes.z[ii]
+        x: _current_aes.x.values[ii],
+        y: _current_aes.y.values[ii],
+        z: _current_aes.z.values[ii]
       };
 
       (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
@@ -394,10 +422,17 @@ ZP.ZP = function(el_, width_, height_) {
     _raycaster = new THREE.Raycaster();
     _selected_obj = null;
 
+    _disc_txtr = new THREE.Texture(ZP.POINT_ICON);
+    _disc_txtr.needsUpdate = true;
+
+    _data_rows = ZP.colsToRows(data_);
+    _data_indices = ZP.range0(this.data.length);
+
 
     //------------------------- Remap AES -------------------------//
 
     /**
+     *
      * scales = { pc1: { x: <scale> }, group: { y: <scale> }, .. }
      *
      * mappings_ = { pca: { x: 'pc1'  , y: 'pc2'  , z: 'pc3'  , color: 'group' } ,
@@ -405,6 +440,8 @@ ZP.ZP = function(el_, width_, height_) {
      *
      * TODO: should be based on types instead of aes slots:
      *       scales = { pc1: { continuous: <scale> }, group: { color_discrete: <scale> }, .. }
+     *
+     *
      */
     let scales = {};
     for (let col in data_) {
@@ -432,22 +469,35 @@ ZP.ZP = function(el_, width_, height_) {
       _aeses[m] = new ZP.Aes(attrs);
     }
 
-    console.log(_aeses);
+    /**
+     * _aeses
+     *
+     *   . pca
+     *       . x     = <scale>
+     *       . y     = <scale>
+     *       . z     = <scale>
+     *       . color = <scale>
+     *
+     *   . mds
+     *       . x     = <scale>
+     *       . y     = <scale>
+     *       . z     = <scale>
+     *       . color = <scale>
+     *
+     */
 
-    // REMOVE THIS
-    mappings_ = mappings_[Object.keys(mappings_)[0]];
+    _aeses_names = Object.keys(_aeses);
 
+    // TODO: draw legends for switching between aeses
 
-
-    _aes = new ZP.AesOld(data_, mappings_);
-    if (_aes.legendDom) legendDiv.appendChild(_aes.legendDom);
+    _curent_aes_name = _aeses_names[0];
+    _curent_aes = _aeses[_current_aes_name];
 
     //------------------------ Handle events ----------------------//
 
     
     resetCameraButton.addEventListener('click', function(e) {
       _orbit.moveToOriginal();
-
     });
 
     toggleAspectButton.addEventListener('click', function(e) {
@@ -508,16 +558,6 @@ ZP.ZP = function(el_, width_, height_) {
       }
     });
 
-    el_.addEventListener('keypress', function(e) {
-      switch (e.key) {
-        case 'p':
-          _stats.domElement.hidden = !_stats.domElement.hidden;
-          break;
-        default:
-          break;
-      }
-    });
-
     //-------------------------------------------------------------//
 
 
@@ -525,10 +565,10 @@ ZP.ZP = function(el_, width_, height_) {
 
     _scene.add( _camera );
 
-    _renderer.domElement.addEventListener('mousemove', function(e) {
-      _mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-      _mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
-    });
+    //_renderer.domElement.addEventListener('mousemove', function(e) {
+    //  _mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+    //  _mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+    //});
 
     _renderer.domElement.addEventListener('dblclick', function(e) {
       let undimmed_points = [];
@@ -587,13 +627,6 @@ ZP.ZP = function(el_, width_, height_) {
     _ortho_orbit.dampingFactor = 0.4;
     _ortho_orbit.update();
 
-    _stats = new Stats();
-    _stats.domElement.style.position = 'absolute';
-    _stats.domElement.style.bottom = '0px';
-    _stats.domElement.style.zIndex = 100;
-    _stats.domElement.hidden = true;
-    container.appendChild( _stats.domElement );
-
     let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
     let floorGtry = new THREE.Geometry();
         floorGtry.vertices.push(new THREE.Vector3( _aes.x.lo, _aes.y.lo, _aes.z.lo));
@@ -606,28 +639,29 @@ ZP.ZP = function(el_, width_, height_) {
 
     // Sprites
 
-    let dotSize = Math.cbrt(7.5 + 60000 / _aes.index.length);
+    let dotSize = Math.cbrt(7.5 + 60000 / _data_indices.length);
     
-    for (var i in _aes.index) {
-      var x = _aes.x[i];
-      var y = _aes.y[i];
-      var z = _aes.z[i];
-      var material = _aes.material[i];
+    for (let i of _data_indices) {
+      // TODO: deal with nulls in these columns
+      let x        = _current_aes.x.values[i];
+      let y        = _current_aes.y.values[i];
+      let z        = _current_aes.z.values[i];
 
-      var datum = {};
-      // note that _index is 1-based
-      datum._index = parseInt(i)+1;
-      for (var prop in data_) {
-        datum[prop] = data_[prop][i];
-      }
+      let datum    = _data_rows[i];
 
-      var discSprt = new THREE.Sprite( material );
+      let color = _current_aes.color ? _current_aes.color.values[i] : ZP.DEFAULT_COLOR;
+      let discSprt = new THREE.Sprite({ map: _disc_txtr, color: new THREE.Color(color), fog: true });
       discSprt.position.set( x, y, z );
       discSprt.scale.set( dotSize, dotSize, 1 );
       discSprt.datum = datum;
       _scene.add( discSprt );
 
       _points.push(discSprt);
+    }
+
+    if (_current_aes.color) {
+      legendDiv.innerHTML = '';
+      legendDiv.appendChild(_current_aes.legend);
     }
 
     // overlay scene
@@ -659,7 +693,6 @@ ZP.ZP = function(el_, width_, height_) {
     function update() {
       TWEEN.update();
       _orbit.update();
-      _stats.update();
     }
 
     function render() {
