@@ -210,20 +210,20 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
  *       . color [optional]
  */
 ZP.Aes = function(attrs_) {
-  if (!attrs.x || !attrs.y || !attrs.z) {
+  if (!attrs_.x || !attrs_.y || !attrs_.z) {
     throw new Error("x, y and z are required in the mapping!");
   }
-  this.x = attrs.x;
-  this.y = attrs.y;
-  this.z = attrs.z;
-  this.color = attrs.color;
+  this.x = attrs_.x;
+  this.y = attrs_.y;
+  this.z = attrs_.z;
+  this.color = attrs_.color;
 };
 
 /**
  *
  * Aeses
  *
- *     1
+ *     unnamed_mapping
  *       . x          =   _continuousScales['pc1']
  *       . y          =   _continuousScales['pc2']
  *       . z          =   _continuousScales['pc3']
@@ -388,31 +388,36 @@ ZP.ZP = function(el_, width_, height_) {
      * TODO: should be based on types instead of aes slots:
      *       scales = { pc1: { continuous: <scale> }, group: { color_discrete: <scale> }, .. }
      */
-    //let scales = {};
-    //for (let col in data_) {
-    //  let scales[col] = {};
-    //}
+    let scales = {};
+    for (let col in data_) {
+      scales[col] = {};
+    }
 
-    //_aeses = {};
-    //for (m in mappings_) {
-    //  let mapping = mappings_[m];
-    //  let attrs = {};
-    //  for (a in mapping) {
-    //    let col = mapping[a];
-    //    if (scales[col][a]) {
-    //      attrs[a] = scales[col][a];
-    //    } else {
-    //      if (a == 'x' || a == 'y' || a == 'z') {
-    //        attrs[a] = new ZP.ScaleContinuous(data_[col], col);
-    //      } else if (a == 'color') {
-    //        attrs[a] = new ZP.ScaleColorDiscrete(data_[col], col);
-    //      } else {
-    //        throw new Error(a + " in mappings is not supported!");
-    //      }
-    //    }
-    //  }
-    //  _aeses[m] = new ZP.Aes(attrs);
-    //}
+    _aeses = {};
+    for (m in mappings_) {
+      let mapping = mappings_[m];
+      let attrs = {};
+      for (a in mapping) {
+        let col = mapping[a];
+        if (scales[col][a]) {
+          attrs[a] = scales[col][a];
+        } else {
+          if (a == 'x' || a == 'y' || a == 'z') {
+            attrs[a] = new ZP.ScaleContinuous(data_[col], col);
+          } else if (a == 'color') {
+            attrs[a] = new ZP.ScaleColorDiscrete(data_[col], col);
+          } else {
+            throw new Error(a + " in mappings is not supported!");
+          }
+        }
+      }
+      _aeses[m] = new ZP.Aes(attrs);
+    }
+
+    console.log(_aeses);
+
+    // REMOVE THIS
+    mappings_ = mappings_[Object.keys(mappings_)[0]];
 
 
 

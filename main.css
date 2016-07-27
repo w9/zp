@@ -50,7 +50,7 @@ body {
   padding: 5px;
   max-width: 25%;
   max-height: 50%;
-  overflow: scroll;
+  overflow: auto;
   white-space: nowrap;
 }
 
