@@ -142,7 +142,8 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   };
 
   var _format_legend_text = function(t) {
-    return t.replace('_', ' ');
+    return t;
+    //return t.replace('_', ' ');
   }
 
   _legend = document.createElement('div');

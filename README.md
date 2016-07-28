@@ -26,8 +26,3 @@ Screenshot
 ----------
 
 ![screenshot](screenshot.png)
-
-Things I Will Not Implement, Ever
----------------------------------
-
-* shapes. They are ugly.
