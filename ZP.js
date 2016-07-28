@@ -287,7 +287,7 @@ ZP.ZP = function(el_, width_, height_) {
   var _data_indices;
 
   var _aspect_state = ZP.ASPECT_STATE.NONE;
-  var _aspect_original = false;
+  var _current_aspect = ZP.ASPECT.ORIGINAL;
 
   var _scene = new THREE.Scene();
   var _scene_overlay = new THREE.Scene();
@@ -396,39 +396,10 @@ ZP.ZP = function(el_, width_, height_) {
     }
   };
 
-  var _update_points = function() {
-    for (let i in _points) {
-      let a = {
-        y: _points[i].position.x,
-        z: _points[i].position.y,
-        x: _points[i].position.z
-      };
-      let b = {
-        x: _current_aes.x.values[i] * _arena_dims.x,
-        y: _current_aes.y.values[i] * _arena_dims.y,
-        z: _current_aes.z.values[i] * _arena_dims.z
-      };
-
-      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x); })
-        .start();
-
-      // animate the crosshairs
-      if (_points[i] === _selected_obj) {
-        (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-          .onUpdate(function(){
-            _crosshairs.position.set(this.y, this.z, this.x);
-          })
-          .start();
-      }
-    }
-  };
-
   var _update_aes = function() {
     // animated colors if updated
     if (_current_aes.color !== _cached_aes.color) {
       for (let i in _points) {
-        _points[i].material.opacity = 1;
         let a = HUSL.fromHex(_cached_aes.color.values[i]);
         let b = HUSL.fromHex(_current_aes.color.values[i]);
         (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
@@ -455,15 +426,40 @@ ZP.ZP = function(el_, width_, height_) {
     if ( _current_aes.x != _cached_aes.x ||
          _current_aes.y != _cached_aes.y ||
          _current_aes.z != _cached_aes.z ) {
-      _update_points();
+      _change_aspect_to(_current_aspect);
+      _update_arena();
     }
 
     _cached_aes = _current_aes;
   };
 
-  var _update_dims = function() {
+  var _update_arena = function() {
     // animate the points
-    _update_points();
+    for (let i in _points) {
+      let a = {
+        y: _points[i].position.x,
+        z: _points[i].position.y,
+        x: _points[i].position.z
+      };
+      let b = {
+        x: _current_aes.x.values[i] * _arena_dims.x,
+        y: _current_aes.y.values[i] * _arena_dims.y,
+        z: _current_aes.z.values[i] * _arena_dims.z
+      };
+
+      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+        .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x); })
+        .start();
+
+      // animate the crosshairs
+      if (_points[i] === _selected_obj) {
+        (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){
+            _crosshairs.position.set(this.y, this.z, this.x);
+          })
+          .start();
+      }
+    }
 
     // animate the floor
 
@@ -628,16 +624,16 @@ ZP.ZP = function(el_, width_, height_) {
     });
 
     toggleAspectButton.addEventListener('click', function(e) {
-      if (_aspect_original) {
+      if (_current_aspect == ZP.ASPECT.EQUAL) {
         _change_aspect_to(ZP.ASPECT.ORIGINAL);
         toggleAspectButton.classList.remove('activated');
-        _aspect_original = false;
+        _current_aspect = ZP.ASPECT.ORIGINAL;
       } else {
         _change_aspect_to(ZP.ASPECT.EQUAL);
         toggleAspectButton.classList.add('activated');
-        _aspect_original = true;
+        _current_aspect = ZP.ASPECT.EQUAL;
       }
-      _update_dims();
+      _update_arena();
     });
 
     toggleOrthoButton.addEventListener('click', function(e) {
