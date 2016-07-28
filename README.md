@@ -16,9 +16,9 @@ Play with it [here](http://60g.org/zp)!
 Default Key Bindings
 --------------------
 
-<kbd>w</kbd><kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> - rotation
-<kbd>Arrow Keys</kbd> - panning
-<kbd>j</kbd><kbd>k</kbd> - switch scales
+* <kbd>w</kbd><kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> - rotation
+* <kbd>Arrow Keys</kbd> - panning
+* <kbd>j</kbd><kbd>k</kbd> - switch scales
 
 Features
 --------
