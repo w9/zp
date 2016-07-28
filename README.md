@@ -8,6 +8,8 @@ R-package can be run in R-Studio.
 
 Bug reports, suggestions and pull requests are very welcome.
 
+Play it [here](http://60g.org/zp)!
+
 ![screencast](screencast.gif)
 
 Features
