@@ -1,13 +1,3 @@
-// TODO: add keyboard support: 
-// 
-//         arrow keys - panning
-//         swad       - rotating
-//         jk         - switch groups
-//         hl         - switch scales
-// 
-// TODO: each legend should remember its own state.
-// 
-// TODO: in "orthogonal views", there's a bug where if you pan a lot in the first view, in the next view the plot will fly away if you move just a little bit.
 // TODO: implement continuous scale
 // TODO: double click should add a label following that dot, using the "label" aes
 // TODO: add "multiple coordinates" functionality (e.g., for PCA and MDS), and maybe multiple **mappings** as well

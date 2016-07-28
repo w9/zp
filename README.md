@@ -36,6 +36,8 @@ Planned Features
 ----------------
 
 * continuous scales
+* instant type searching
+* floating labels (supplied by specifying a column of the data frame)
 * box selection
 * high quality R-interface
 * interface to Python, Julia, and other languages
