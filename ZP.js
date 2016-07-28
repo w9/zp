@@ -115,7 +115,9 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   // this array will later be destroyed so don't use reference directly
   var _palette = (palette_ || ZP.COLOR_PALETTE).slice();
 
-  var _levels = Array.from(new Set(vec_)).map(l => l === null ? null : l.toString()).sort();
+  var _vec = vec_.map(f => f === null ? null : f.toString());
+
+  var _levels = Array.from(new Set(_vec)).sort();
 
   var _changeLevel = function(l, action_) {
     _dimmed[l] = action_ == 'dim' ? true : false;
@@ -134,7 +136,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   };
 
   var _toggleAllLevels = function() {
-    let action = _levels.every(l => _dimmed(l)) ? 'light' : 'dim';
+    let action = _levels.every(l => _dimmed[l]) ? 'light' : 'dim';
     _levels.map(l => _changeLevel(l, action));
   };
 
@@ -165,8 +167,8 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
     if (l === null) { _toggleLevel(l, 'dim') }
     
   }
-
-  var _values = vec_.map(f => _color[f]);
+  _vec.map((f, i) => _indices[f].push(i));
+  var _values = _vec.map(f => _color[f]);
 
   this.legend = _legend;
   this.values = _values;
@@ -380,25 +382,25 @@ ZP.ZP = function(el_, width_, height_) {
     // animate the _points
     for (let i in _points) {
       let a = {
-        x: _points[i].position.x,
-        y: _points[i].position.y,
-        z: _points[i].position.z
+        y: _points[i].position.x,
+        z: _points[i].position.y,
+        x: _points[i].position.z
       };
       let b = {
-        x: _current_aes.x.values[i],
-        y: _current_aes.y.values[i],
-        z: _current_aes.z.values[i]
+        x: _current_aes.x.values[i] * _arena_dims.x,
+        y: _current_aes.y.values[i] * _arena_dims.y,
+        z: _current_aes.z.values[i] * _arena_dims.z
       };
 
       (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){ _points[i].position.set(this.x, this.y, this.z); })
+        .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x); })
         .start();
 
       // animate the crosshairs
       if (_points[i] === _selected_obj) {
         (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){
-            _crosshairs.position.set(this.x, this.y, this.z);
+            _crosshairs.position.set(this.y, this.z, this.x);
           })
           .start();
       }
@@ -435,8 +437,21 @@ ZP.ZP = function(el_, width_, height_) {
         })
         .start();
     }
+  };
 
-  }
+  var _dim_points = function(inds) {
+    for (let i of inds) {
+      _points[i].material.opacity = 0.1;
+      _points[i].dimmed = true;
+    }
+  };
+
+  var _light_points = function(inds) {
+    for (let i of inds) {
+      _points[i].material.opacity = 1;
+      _points[i].dimmed = false;
+    }
+  };
 
   this.plot = function(data_, mappings_) {
     _points = [];
@@ -521,6 +536,10 @@ ZP.ZP = function(el_, width_, height_) {
 
     
     resetCameraButton.addEventListener('click', function(e) {
+      _ortho = 'none';
+      _ortho_orbit.enabled = false;
+      _orbit.enabled = true;
+
       _orbit.moveToOriginal();
     });
 
@@ -595,20 +614,7 @@ ZP.ZP = function(el_, width_, height_) {
     //});
 
     _renderer.domElement.addEventListener('dblclick', function(e) {
-      let undimmed_points = [];
-      let levels = _aes.scale.levels;
-      let mapping = _aes.scale.mapping;
-
-      for (let i in levels) {
-        let l = levels[i];
-        let ids = mapping[l].indices;
-        if (!mapping[l].dimmed) {
-          for (let j=0; j<ids.length; j++) {
-            undimmed_points.push(_points[ids[j]]);
-          }
-        }
-      }
-      let undimmed_points_flatten = [].concat.apply([], undimmed_points);
+      let undimmed_points = _points.filter(p => !p.dimmed);
 
       if (_ortho == 'none') {
         _raycaster.setFromCamera( _mouse, _camera );
@@ -667,9 +673,6 @@ ZP.ZP = function(el_, width_, height_) {
       { x: - dims.x, y: - dims.y, z: - dims.z }
     ];
 
-    console.log(_arena_dims);
-    console.log(vs);
-
     let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
     let floorGtry = new THREE.Geometry();
     vs.map(v => floorGtry.vertices.push(new THREE.Vector3(v.y, v.z, v.x)));
@@ -687,16 +690,21 @@ ZP.ZP = function(el_, width_, height_) {
       let datum    = _data_rows[i];
 
       let color = _current_aes.color ? _current_aes.color.values[i] : ZP.DEFAULT_COLOR;
-      let discSprt = new THREE.Sprite({ map: _disc_txtr, color: new THREE.Color(color), fog: true });
-      discSprt.position.set( x , y , z );
+      let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) });
+      let discSprt = new THREE.Sprite(discMtrl);
+      discSprt.position.set( y , z , x );
       discSprt.scale.set( _dot_size, _dot_size, 1 );
       discSprt.datum = datum;
+      discSprt.dimmed = false;
       _scene.add( discSprt );
 
       _points.push(discSprt);
     }
 
     if (_current_aes.color) {
+      _current_aes.color.legend.addEventListener('dim', e => _dim_points(e.detail));
+      _current_aes.color.legend.addEventListener('light', e => _light_points(e.detail));
+
       legendDiv.innerHTML = '';
       legendDiv.appendChild(_current_aes.color.legend);
     }
