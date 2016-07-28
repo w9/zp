@@ -22,6 +22,11 @@ Features
 * allows for adjusting of aspect ratio
 * orthogonal views
 
+Screencast
+----------
+
+[https://gfycat.com/HeartfeltScaredAsiandamselfly](https://gfycat.com/HeartfeltScaredAsiandamselfly)
+
 Screenshot
 ----------
 
