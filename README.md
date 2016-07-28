@@ -17,7 +17,7 @@ Features
 --------
 
 * WebGL interactive 3D graphics
-* great performance for upto 1,000 points (10,000 if your have a decent GPU)
+* great performance for up to 1,000 points (10,000 if your have a decent GPU)
 * ggplot2-like relational data language (which means legends are drawn automatically)
 * allows for multiple scales (coordinates and/or color) and seamless transitioning
 * allows for picking data dynamically
