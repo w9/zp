@@ -2,15 +2,11 @@ ZP: 3D scatter plot
 ===================
 
 ZP leverages **WebGL** and implements **relational-data plotting language** (similar to `ggplot2` in R),
-presenting an elegant way to visualize data points with interactive 3D graphics.
+presenting an elegant way to visualize data points with interactive 3D graphics. This package is
+written in JavaScript but I made an [R interface](https://github.com/w9/zp-r), using htmlwidgets. This
+R-package can be run in R-Studio.
 
-Language Supported
-------------------
-
-Due to its simple interface, ZP can be easily ported to other languages.
-
-* [R interface](https://github.com/w9/zp-r)
-
+![screencast](screencast.gif)
 
 Features
 --------
@@ -23,7 +19,3 @@ Features
 * allows for adjusting of aspect ratio
 * orthogonal views
 
-Screencast
-----------
-
-![screencast](screencast.gif)
