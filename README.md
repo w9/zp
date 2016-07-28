@@ -35,9 +35,12 @@ Features
 Planned Features
 ----------------
 
+These are listed by their priority. This list will get constantly updated.
+
+* better support for handling missing coordinate values across scales, possibly by implementing D3 style "enter" and "exit"
 * continuous scales
 * instant type searching
 * floating labels (supplied by specifying a column of the data frame)
-* box selection
-* high quality R-interface
+* box selection, and more sophisticated communication with the container (like a shiny app or the web page that embeds it)
+* much higher quality R-interface
 * interface to Python, Julia, and other languages
