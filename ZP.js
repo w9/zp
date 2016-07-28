@@ -1,3 +1,12 @@
+// TODO: add keyboard support: 
+// 
+//         asdw     - panning;
+//         hl       - switch scales;
+//         jk       - switch groups;
+//         spacebar - switching between four default positions
+// 
+// TODO: each legend should remember its own state.
+// 
 // TODO: in "orthogonal views", there's a bug where if you pan a lot in the first view, in the next view the plot will fly away if you move just a little bit.
 // TODO: implement continuous scale
 // TODO: double click should add a label following that dot, using the "label" aes
