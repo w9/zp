@@ -6,6 +6,8 @@ presenting an elegant way to visualize data points with interactive 3D graphics.
 written in JavaScript but I made an [R interface](https://github.com/w9/zp-r), using htmlwidgets. This
 R-package can be run in R-Studio.
 
+Bug reports, suggestions and pull requests are very welcome.
+
 ![screencast](screencast.gif)
 
 Features
@@ -19,3 +21,10 @@ Features
 * allows for adjusting of aspect ratio
 * orthogonal views
 
+Planned Features
+----------------
+
+* continuous scales
+* box selection
+* high quality R-interface
+* interface to Python, Julia, and other languages
