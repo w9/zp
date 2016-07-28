@@ -51,7 +51,7 @@ body {
   max-width: 25%;
   max-height: 50%;
   overflow: auto;
-  white-space: nowrap;
+  word-wrap: break-word;
 }
 
 #scale-name {

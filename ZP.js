@@ -141,8 +141,12 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
     _levels.map(l => _changeLevel(l, action));
   };
 
+  var _format_legend_text = function(t) {
+    return t.replace('_', ' ');
+  }
+
   _legend = document.createElement('div');
-  _legend.innerHTML = '<h2>' + name_ + '</h2>';
+  _legend.innerHTML = '<h2>' + _format_legend_text(name_) + '</h2>';
 
   let itemContainer = document.createElement('div');
   itemContainer.id = 'item-container';
@@ -155,7 +159,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
     let item = document.createElement('div');
     item.classList.add('item');
-    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + (l === null ? 'None' : l);
+    item.innerHTML = '<span class="color-patch" style="background-color: ' + color + '"></span>' + _format_legend_text(l);
     item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneLevel(l) : _toggleLevel(l)});
     item.addEventListener('dblclick', function(e){e.stopPropagation()});
     itemContainer.appendChild(item);
@@ -379,7 +383,7 @@ ZP.ZP = function(el_, width_, height_) {
   var datumDisplay = document.createElement('div');
   overlayDom.appendChild(datumDisplay);
 
-  var _mouse;
+  //var _mouse;
   var _raycaster;
 
   //--------------------- Helper Functions ----------------------//
@@ -511,7 +515,7 @@ ZP.ZP = function(el_, width_, height_) {
 
   this.plot = function(data_, mappings_) {
     _points = [];
-    _mouse = new THREE.Vector2(Infinity, Infinity);
+    //_mouse = new THREE.Vector2(Infinity, Infinity);
     _raycaster = new THREE.Raycaster();
     _selected_obj = null;
 
@@ -694,12 +698,16 @@ ZP.ZP = function(el_, width_, height_) {
     //});
 
     _renderer.domElement.addEventListener('dblclick', function(e) {
-      let undimmed_points = _points.filter(p => !p.dimmed);
+      let undimmed_points = _points.filter(p => p.material.opacity == 1);
+
+      let mouse = new THREE.Vector2(Infinity, Infinity);
+      mouse.x = ( e.offsetX / _renderer.domElement.clientWidth ) * 2 - 1;
+      mouse.y = - ( e.offsetY / _renderer.domElement.clientHeight ) * 2 + 1;
 
       if (_ortho == 'none') {
-        _raycaster.setFromCamera( _mouse, _camera );
+        _raycaster.setFromCamera( mouse, _camera );
       } else {
-        _raycaster.setFromCamera( _mouse, _ortho_camera );
+        _raycaster.setFromCamera( mouse, _ortho_camera );
       }
       var intersects = _raycaster.intersectObjects( undimmed_points );
       if (intersects.length > 0) {
@@ -768,6 +776,7 @@ ZP.ZP = function(el_, width_, height_) {
       let z        = _current_aes.z.values[i] * _arena_dims.z;
 
       let datum    = _data_rows[i];
+      datum['(index)'] = i;
 
       let color = _current_aes.color ? _current_aes.color.values[i] : ZP.DEFAULT_COLOR;
       let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) });
