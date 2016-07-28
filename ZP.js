@@ -25,6 +25,7 @@ ZP.VIEW_ANGLE = 45;
 ZP.ORTHO_SHRINK = 180;
 ZP.NEAR = 0.1;
 ZP.FAR = 20000;
+ZP.ANIMATION_DURATION = 250;
 ZP.FLOOR_MARGIN = 2;
 
 ZP.POINT_ICON = document.createElement('img');
@@ -170,6 +171,8 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   _vec.map((f, i) => _indices[f].push(i));
   var _values = _vec.map(f => _color[f]);
 
+  _legend.reset = function() { _levels.map(l => _changeLevel(l, 'light')) };
+
   this.legend = _legend;
   this.values = _values;
 
@@ -302,8 +305,11 @@ ZP.ZP = function(el_, width_, height_) {
 
   var _aeses;
   var _aeses_names;
+  var _num_aeses;
+  var _current_aes_index;
   var _current_aes_name;
   var _current_aes;
+  var _cached_aes;
 
   var _dot_size;
 
@@ -324,9 +330,13 @@ ZP.ZP = function(el_, width_, height_) {
   container.id = 'plot-container';
   el_.appendChild(container);
 
-  var legendDiv = document.createElement('div');
-  legendDiv.id = 'legend';
-  el_.appendChild(legendDiv);
+  var _scale_name_div = document.createElement('div');
+  _scale_name_div.id = 'scale-name';
+  el_.appendChild(_scale_name_div);
+
+  var _legend_div = document.createElement('div');
+  _legend_div.id = 'legend';
+  el_.appendChild(_legend_div);
 
   var overlayDom = document.createElement('div');
   overlayDom.id = 'overlay';
@@ -336,29 +346,37 @@ ZP.ZP = function(el_, width_, height_) {
   toolbarDom.id = 'toolbar';
   overlayDom.appendChild(toolbarDom);
 
+  var prevScaleButton = document.createElement('i');
+  prevScaleButton.innerText = 'undo';
+  prevScaleButton.title = 'previous scale';
+  prevScaleButton.classList.add('material-icons');
+  toolbarDom.appendChild(prevScaleButton);
+
+  var nextScaleButton = document.createElement('i');
+  nextScaleButton.innerText = 'redo';
+  nextScaleButton.title = 'next scale';
+  nextScaleButton.classList.add('material-icons');
+  toolbarDom.appendChild(nextScaleButton);
+
   var resetCameraButton = document.createElement('i');
   resetCameraButton.innerText = 'youtube_searched_for';
-  resetCameraButton.id = 'reset-camera-button';
   resetCameraButton.title = 'reset camera angle';
   resetCameraButton.classList.add('material-icons');
   toolbarDom.appendChild(resetCameraButton);
 
   var toggleAspectButton = document.createElement('i');
   toggleAspectButton.innerText = 'aspect_ratio';
-  toggleAspectButton.id = 'toggle-aspect-buttom';
   toggleAspectButton.title = 'toggle aspect ratio between 1:1:1 and original';
   toggleAspectButton.classList.add('material-icons');
   toolbarDom.appendChild(toggleAspectButton);
 
   var toggleOrthoButton = document.createElement('i');
   toggleOrthoButton.innerText = 'call_merge';
-  toggleOrthoButton.id = 'toggle-ortho-buttom';
   toggleOrthoButton.title = 'toggle between orthographic and perspective camera';
   toggleOrthoButton.classList.add('material-icons');
   toolbarDom.appendChild(toggleOrthoButton);
 
   var datumDisplay = document.createElement('div');
-  datumDisplay.id = 'datum-display';
   overlayDom.appendChild(datumDisplay);
 
   var _mouse;
@@ -376,10 +394,9 @@ ZP.ZP = function(el_, width_, height_) {
       let coef = 300 / (rx + ry + rz);
       _arena_dims = { x: coef * rx, y: coef * ry, z: coef * rz };
     }
-  }
+  };
 
-  var _update_geometry = function() {
-    // animate the _points
+  var _update_points = function() {
     for (let i in _points) {
       let a = {
         y: _points[i].position.x,
@@ -392,19 +409,61 @@ ZP.ZP = function(el_, width_, height_) {
         z: _current_aes.z.values[i] * _arena_dims.z
       };
 
-      (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
+      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x); })
         .start();
 
       // animate the crosshairs
       if (_points[i] === _selected_obj) {
-        (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
+        (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){
             _crosshairs.position.set(this.y, this.z, this.x);
           })
           .start();
       }
     }
+  };
+
+  var _update_aes = function() {
+    // animated colors if updated
+    if (_current_aes.color !== _cached_aes.color) {
+      for (let i in _points) {
+        _points[i].material.opacity = 1;
+        let a = HUSL.fromHex(_cached_aes.color.values[i]);
+        let b = HUSL.fromHex(_current_aes.color.values[i]);
+        (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){
+            _points[i].material.color = new THREE.Color(HUSL.toHex(this[0], this[1], this[2]));
+          })
+          .start();
+      }
+
+      if (_cached_aes) {
+        _cached_aes.color.legend.reset();
+        _cached_aes.color.legend.removeEventListener('dim', _on_dim);
+        _cached_aes.color.legend.removeEventListener('light', _on_light);
+      }
+
+      _current_aes.color.legend.addEventListener('dim', _on_dim);
+      _current_aes.color.legend.addEventListener('light', _on_light);
+
+      _legend_div.innerHTML = '';
+      _legend_div.appendChild(_current_aes.color.legend);
+    }
+
+    // animated points if updated
+    if ( _current_aes.x != _cached_aes.x ||
+         _current_aes.y != _cached_aes.y ||
+         _current_aes.z != _cached_aes.z ) {
+      _update_points();
+    }
+
+    _cached_aes = _current_aes;
+  };
+
+  var _update_dims = function() {
+    // animate the points
+    _update_points();
 
     // animate the floor
 
@@ -430,7 +489,7 @@ ZP.ZP = function(el_, width_, height_) {
       };
       let b = vs[i];
 
-      (new TWEEN.Tween(a)).to(b, 250).easing(TWEEN.Easing.Exponential.Out)
+      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
           _floor.geometry.vertices[i].set(this.y, this.z, this.x);
           _floor.geometry.verticesNeedUpdate = true;
@@ -442,16 +501,17 @@ ZP.ZP = function(el_, width_, height_) {
   var _dim_points = function(inds) {
     for (let i of inds) {
       _points[i].material.opacity = 0.1;
-      _points[i].dimmed = true;
     }
   };
 
   var _light_points = function(inds) {
     for (let i of inds) {
       _points[i].material.opacity = 1;
-      _points[i].dimmed = false;
     }
   };
+
+  var _on_dim = function(e) { _dim_points(e.detail) };
+  var _on_light = function(e) { _light_points(e.detail) };
 
   this.plot = function(data_, mappings_) {
     _points = [];
@@ -494,9 +554,9 @@ ZP.ZP = function(el_, width_, height_) {
           attrs[a] = scales[col][a];
         } else {
           if (a == 'x' || a == 'y' || a == 'z') {
-            attrs[a] = new ZP.ScaleContinuous(data_[col], col);
+            attrs[a] = scales[col][a] = new ZP.ScaleContinuous(data_[col], col);
           } else if (a == 'color') {
-            attrs[a] = new ZP.ScaleColorDiscrete(data_[col], col);
+            attrs[a] = scales[col][a] = new ZP.ScaleColorDiscrete(data_[col], col);
           } else {
             throw new Error(a + " in mappings is not supported!");
           }
@@ -523,11 +583,21 @@ ZP.ZP = function(el_, width_, height_) {
      */
 
     _aeses_names = Object.keys(_aeses);
+    _num_aeses = _aeses_names.length;
 
     // TODO: draw legends for switching between aeses
 
-    _current_aes_name = _aeses_names[0];
-    _current_aes = _aeses[_current_aes_name];
+    var _change_aes = function(ind) {
+      _cached_aes = _current_aes;
+
+      _current_aes_name = _aeses_names[_current_aes_index];
+      _scale_name_div.innerText = _current_aes_name;
+
+      _current_aes = _aeses[_current_aes_name];
+    };
+
+    _current_aes_index = 0;
+    _change_aes(_current_aes_index);
 
     _change_aspect_to(ZP.ASPECT.ORIGINAL);
 
@@ -535,6 +605,20 @@ ZP.ZP = function(el_, width_, height_) {
     //------------------------ Handle events ----------------------//
 
     
+    prevScaleButton.addEventListener('click', function(e) {
+      _current_aes_index += _num_aeses - 1;
+      _current_aes_index = _current_aes_index % _num_aeses;
+      _change_aes(_current_aes_index);
+      _update_aes();
+    });
+
+    nextScaleButton.addEventListener('click', function(e) {
+      _current_aes_index++;
+      _current_aes_index = _current_aes_index % _num_aeses;
+      _change_aes(_current_aes_index);
+      _update_aes();
+    });
+
     resetCameraButton.addEventListener('click', function(e) {
       _ortho = 'none';
       _ortho_orbit.enabled = false;
@@ -553,7 +637,7 @@ ZP.ZP = function(el_, width_, height_) {
         toggleAspectButton.classList.add('activated');
         _aspect_original = true;
       }
-      _update_geometry();
+      _update_dims();
     });
 
     toggleOrthoButton.addEventListener('click', function(e) {
@@ -702,11 +786,11 @@ ZP.ZP = function(el_, width_, height_) {
     }
 
     if (_current_aes.color) {
-      _current_aes.color.legend.addEventListener('dim', e => _dim_points(e.detail));
-      _current_aes.color.legend.addEventListener('light', e => _light_points(e.detail));
+      _current_aes.color.legend.addEventListener('dim', _on_dim);
+      _current_aes.color.legend.addEventListener('light', _on_light);
 
-      legendDiv.innerHTML = '';
-      legendDiv.appendChild(_current_aes.color.legend);
+      _legend_div.innerHTML = '';
+      _legend_div.appendChild(_current_aes.color.legend);
     }
 
     // overlay scene
