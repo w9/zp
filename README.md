@@ -19,7 +19,7 @@ Default Key Bindings
 * <kbd>w</kbd><kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> - rotation
 * <kbd>Arrow Keys</kbd> - panning
 * <kbd>j</kbd><kbd>k</kbd> - switch scales
-* [Ctrl] + clicking discrete color legend item - only show selected level
+* <kbd>Ctrl</kbd> + clicking discrete color legend item - only show selected level
 
 Features
 --------
