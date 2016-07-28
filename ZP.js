@@ -1,9 +1,9 @@
 // TODO: add keyboard support: 
 // 
-//         asdw     - panning;
-//         hl       - switch scales;
-//         jk       - switch groups;
-//         spacebar - switching between four default positions
+//         arrow keys - panning
+//         swad       - rotating
+//         jk         - switch groups
+//         hl         - switch scales
 // 
 // TODO: each legend should remember its own state.
 // 
@@ -36,6 +36,8 @@ ZP.NEAR = 0.1;
 ZP.FAR = 20000;
 ZP.ANIMATION_DURATION = 250;
 ZP.FLOOR_MARGIN = 2;
+ZP.KEY_SCALE_PREV = 'h';
+ZP.KEY_SCALE_NEXT = 'l';
 
 ZP.POINT_ICON = document.createElement('img');
 ZP.POINT_ICON.src = 'data:image/png;base64,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';
@@ -129,25 +131,25 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   var _levels = Array.from(new Set(_vec)).sort();
 
-  var _changeLevel = function(l, action_) {
-    _dimmed[l] = action_ == 'dim' ? true : false;
-    _legendItem[l].classList[action_ == 'dim' ? 'add' : 'remove']('dimmed');
-    _legend.dispatchEvent(new CustomEvent(action_, { bubbles: true, detail: _indices[l] }));
+  var _changeLevel = function(l, new_dimmed_) {
+    _dimmed[l] = new_dimmed_;
+    _legendItem[l].classList[new_dimmed_ ? 'add' : 'remove']('dimmed');
+    _legend.dispatchEvent(new CustomEvent(new_dimmed_ ? 'dim' : 'light', { bubbles: true, detail: _indices[l] }));
   };
   
   var _toggleLevel = function(l) {
-    _changeLevel(l, _dimmed[l] ? 'light' : 'dim');
+    _changeLevel(l, !_dimmed[l]);
   };
 
   var _onlyShowOneLevel = function(l) {
     for (let level of _levels) {
-      _changeLevel(level, level == l ? 'light' : 'dim');
+      _changeLevel(level, !(level == l));
     }
   };
 
   var _toggleAllLevels = function() {
-    let action = _levels.every(l => _dimmed[l]) ? 'light' : 'dim';
-    _levels.map(l => _changeLevel(l, action));
+    let all_dimmed = _levels.every(l => _dimmed[l]);
+    _levels.map(l => _changeLevel(l, !all_dimmed));
   };
 
   var _format_legend_text = function(t) {
@@ -185,7 +187,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   _vec.map((f, i) => _indices[f].push(i));
   var _values = _vec.map(f => _color[f]);
 
-  _legend.reset = function() { _levels.map(l => _changeLevel(l, 'light')) };
+  _legend.reset = function() { console.log(_dimmed); _levels.map(l => _changeLevel(l, _dimmed[l])) };
 
   this.legend = _legend;
   this.values = _values;
@@ -424,13 +426,13 @@ ZP.ZP = function(el_, width_, height_) {
       }
 
       if (_cached_aes) {
-        _cached_aes.color.legend.reset();
         _cached_aes.color.legend.removeEventListener('dim', _on_dim);
         _cached_aes.color.legend.removeEventListener('light', _on_light);
       }
 
       _current_aes.color.legend.addEventListener('dim', _on_dim);
       _current_aes.color.legend.addEventListener('light', _on_light);
+      _current_aes.color.legend.reset();
 
       _legend_div.innerHTML = '';
       _legend_div.appendChild(_current_aes.color.legend);
@@ -508,20 +510,18 @@ ZP.ZP = function(el_, width_, height_) {
     }
   };
 
-  var _dim_points = function(inds) {
+  var _dim_points = function(inds, dim) {
     for (let i of inds) {
-      _points[i].material.opacity = 0.1;
+      var a = { opacity: _points[i].material.opacity };
+      var b = { opacity: dim ? 0.1 : 1 };
+      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+        .onUpdate(function(){ _points[i].material.opacity = this.opacity })
+        .start();
     }
   };
 
-  var _light_points = function(inds) {
-    for (let i of inds) {
-      _points[i].material.opacity = 1;
-    }
-  };
-
-  var _on_dim = function(e) { _dim_points(e.detail) };
-  var _on_light = function(e) { _light_points(e.detail) };
+  var _on_dim = function(e) { _dim_points(e.detail, true) };
+  var _on_light = function(e) { _dim_points(e.detail, false) };
 
   this.plot = function(data_, mappings_) {
     _points = [];
@@ -597,9 +597,10 @@ ZP.ZP = function(el_, width_, height_) {
 
     // TODO: draw legends for switching between aeses
 
-    var _change_aes = function(ind) {
+    var _change_aes = function(by_) {
       _cached_aes = _current_aes;
 
+      _current_aes_index = (_current_aes_index + _num_aeses + by_) % _num_aeses;
       _current_aes_name = _aeses_names[_current_aes_index];
       _scale_name_div.innerText = _current_aes_name;
 
@@ -614,18 +615,20 @@ ZP.ZP = function(el_, width_, height_) {
 
     //------------------------ Handle events ----------------------//
 
+    el_.addEventListener('keydown', function(e) {
+      switch ( e.key ) {
+        case ZP.KEY_SCALE_PREV: prevScaleButton.dispatchEvent(new Event('click')); break;
+        case ZP.KEY_SCALE_NEXT: nextScaleButton.dispatchEvent(new Event('click')); break;
+      }
+    });
     
     prevScaleButton.addEventListener('click', function(e) {
-      _current_aes_index += _num_aeses - 1;
-      _current_aes_index = _current_aes_index % _num_aeses;
-      _change_aes(_current_aes_index);
+      _change_aes(-1);
       _update_aes();
     });
 
     nextScaleButton.addEventListener('click', function(e) {
-      _current_aes_index++;
-      _current_aes_index = _current_aes_index % _num_aeses;
-      _change_aes(_current_aes_index);
+      _change_aes(1);
       _update_aes();
     });
 
