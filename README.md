@@ -11,7 +11,7 @@ Bug reports, suggestions and pull requests are very welcome.
 
 Play with it [here](http://60g.org/zp)!
 
-![screencast](http://i.giphy.com/3owyp8ulB7T3V8REGY.gif)
+![screencast](https://i.giphy.com/3owyp8ulB7T3V8REGY.gif)
 
 ![screencast](https://media.giphy.com/media/l41YbnQ2qRrBesVag/giphy.gif)
 
