@@ -1,4 +1,4 @@
-// TODO: implement continuous scale
+// TODO: use svg for the legend of continuous color scale
 // TODO: double click should add a label following that dot, using the "label" aes
 // TODO: add "multiple coordinates" functionality (e.g., for PCA and MDS), and maybe multiple **mappings** as well
 // TODO: add **instant type** search functionality, very useful when the dots are overwhelmingly many
