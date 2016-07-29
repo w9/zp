@@ -31,6 +31,7 @@ ZP.FLOOR_MARGIN = 2;
 ZP.KEY_SCALE_PREV = 'j';
 ZP.KEY_SCALE_NEXT = 'k';
 ZP.NULL_DISPLAY_AS = 'none';
+ZP.CROSSHAIR_SIZE_FACTOR = 2;
 
 ZP.POINT_ICON = document.createElement('img');
 ZP.POINT_ICON.src = 'data:image/png;base64,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';
@@ -284,9 +285,11 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
   var _legend = document.createElement('div');
   _legend.innerHTML = '<h2>' + name_ + '</h2>';
   _legend.innerHTML += '<div style="background: linear-gradient(' + ZP.COLOR_HIGH + ',' + ZP.COLOR_LOW + ')" class="gradient-patch"/>';
+  _legend.reset = function() {
+    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: ZP.range0(vec_.length) }));
+  };
 
   this.legend = _legend;
-  this.legend.reset  = function(){};
 };
 
 
@@ -648,7 +651,7 @@ ZP.ZP = function(el_, width_, height_) {
 
     //------------------------ Handle events ----------------------//
 
-    el_.addEventListener('keydown', function(e) {
+    window.addEventListener('keydown', function(e) {
       switch ( e.key ) {
         case ZP.KEY_SCALE_PREV: prevScaleButton.dispatchEvent(new Event('click')); break;
         case ZP.KEY_SCALE_NEXT: nextScaleButton.dispatchEvent(new Event('click')); break;
@@ -857,9 +860,9 @@ ZP.ZP = function(el_, width_, height_) {
     _crosshairs = new THREE.Sprite( crosshairsMtrl );
     _crosshairs.position.set( Infinity, Infinity, Infinity );
     _crosshairs.visible = false;
-    _crosshairs.tweenObj = { size: 10 };
+    _crosshairs.tweenObj = { size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR };
     _crosshairs.tween = new TWEEN.Tween(_crosshairs.tweenObj)
-    _crosshairs.tween.to({ size: 14 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
+    _crosshairs.tween.to({ size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR * 1.4 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
       .onUpdate(function(){ _crosshairs.scale.set(this.size, this.size, 1) })
       .start()
     _scene_overlay.add( _crosshairs );
