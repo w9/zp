@@ -842,6 +842,8 @@ ZP.ZP = function(el_, width_, height_) {
 
       _legend_div.innerHTML = '';
       _legend_div.appendChild(_current_aes.color.legend);
+
+      _current_aes.color.legend.reset();
     }
 
     // overlay scene
