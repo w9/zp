@@ -786,7 +786,7 @@ ZP.ZP = function(el_, width_, height_) {
     _ortho_orbit.dampingFactor = 0.4;
     _ortho_orbit.update();
 
-    _dot_size = Math.cbrt(7.5 + 60000 / _data_indices.length);
+    _dot_size = Math.cbrt(7.5 + 35000 / _data_indices.length);
 
     let m = _dot_size/2 + ZP.FLOOR_MARGIN;
     let dims = {
