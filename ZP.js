@@ -12,7 +12,7 @@
 // TODO: adopt/modify the offical library for canvas material: http://threejs.org/examples/#canvas_interactive_particles
 
 
-ZP = {};
+var ZP = ZP || {};
 
 
 ZP.ASPECT = { EQUAL: 0, ORIGINAL: 1 };
