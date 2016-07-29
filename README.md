@@ -30,7 +30,7 @@ ZP is the 3D plotting tool *I* have always wanted. Currently it has following fe
 Planned Features
 ----------------
 
-These are listed by their priority. This list will get constantly updated.
+These are listed by their priority. This list will be constantly updated.
 
 * continuous scales
 * better support for handling missing coordinate values across scales, possibly by implementing D3 style "enter" and "exit"
