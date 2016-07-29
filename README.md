@@ -16,6 +16,8 @@ Play with it [here](http://60g.org/zp)!
 Features
 --------
 
+ZP is the 3D plotting tool *I* have always wanted. Currently it has following features:
+
 * WebGL interactive 3D graphics
 * automatically figure out the most comfortable point sizes and box dimensions
 * great performance for up to 1,000 points (10,000 if your have a decent GPU)
