@@ -819,7 +819,7 @@ ZP.ZP = function(el_, width_, height_) {
       let z     = _current_aes.z.values[i] * _arena_dims.z;
 
       let datum = _data_rows[i];
-      datum['(index)'] = i;
+      datum['(0-based index)'] = i;
 
       let color = _current_aes.color ? _current_aes.color.values[i] : ZP.COLOR_DEFAULT;
       let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) });
