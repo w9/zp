@@ -19,7 +19,18 @@ Default Key Bindings
 * <kbd>w</kbd><kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> - rotation
 * <kbd>Arrow Keys</kbd> - panning
 * <kbd>j</kbd><kbd>k</kbd> - switch scales
-* <kbd>Ctrl</kbd> + clicking discrete color legend item - only show selected level
+
+Tips
+----
+
+* As part of the philosophy of this package, every feature should work with every
+  other feature as expected. For example, you can do point selecting, zooming,
+  and scale switching in orthographic views as well.
+* Holding <kbd>Ctrl</kbd> while clicking discrete color legend item will only
+  show selected level
+* `null` (equivalent to `NA` in R) color values will be displayed as "none" and
+  the color is dimmed by default, very convenient if you have a large
+  uninteresting background level in your color factors.
 
 Features
 --------
@@ -37,8 +48,8 @@ Planned Features
 
 These are listed by their priority. This list will get constantly updated.
 
-* better support for handling missing coordinate values across scales, possibly by implementing D3 style "enter" and "exit"
 * continuous scales
+* better support for handling missing coordinate values across scales, possibly by implementing D3 style "enter" and "exit"
 * instant type searching
 * floating labels (supplied by specifying a column of the data frame)
 * box selection, and more sophisticated communication with the container (like a shiny app or the web page that embeds it)
