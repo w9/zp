@@ -13,29 +13,11 @@ Play with it [here](http://60g.org/zp)!
 
 ![screencast](screencast.gif)
 
-Default Key Bindings
---------------------
-
-* <kbd>w</kbd><kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> - rotation
-* <kbd>Arrow Keys</kbd> - panning
-* <kbd>j</kbd><kbd>k</kbd> - switch scales
-
-Tips
-----
-
-* As part of the philosophy of this package, every feature should work with every
-  other feature as expected. For example, you can do point selecting, zooming,
-  and scale switching in orthographic views as well.
-* Holding <kbd>Ctrl</kbd> while clicking discrete color legend item will only
-  show selected level
-* `null` (equivalent to `NA` in R) color values will be displayed as "none" and
-  the color is dimmed by default, very convenient if you have a large
-  uninteresting background level in your color factors.
-
 Features
 --------
 
 * WebGL interactive 3D graphics
+* automatically figure out the most comfortable point sizes and box dimensions
 * great performance for up to 1,000 points (10,000 if your have a decent GPU)
 * ggplot2-like relational data language (which means legends are drawn automatically)
 * allows for multiple scales (coordinates and/or color) and seamless transitioning
@@ -55,3 +37,22 @@ These are listed by their priority. This list will get constantly updated.
 * box selection, and more sophisticated communication with the container (like a shiny app or the web page that embeds it)
 * much higher quality R-interface
 * interface to Python, Julia, and other languages
+
+Default Key Bindings
+--------------------
+
+* <kbd>w</kbd><kbd>a</kbd><kbd>s</kbd><kbd>d</kbd> - rotation
+* <kbd>Arrow Keys</kbd> - panning
+* <kbd>j</kbd><kbd>k</kbd> - switch scales
+
+Tips
+----
+
+* As part of the philosophy of this package, every feature should work with every
+  other feature as expected. For example, you can do point selecting, zooming,
+  and scale switching in orthographic views as well.
+* Holding <kbd>Ctrl</kbd> while clicking discrete color legend item will only
+  show selected level
+* `null` (equivalent to `NA` in R) color values will be displayed as "none" and
+  the color is dimmed by default, very convenient if you have a large
+  uninteresting background level in your color factors.
