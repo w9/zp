@@ -1,117 +1,12 @@
-body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-#overlay {
-  font-family: monospace;
-  font-size: 1em;
+#help-panel {
+  font-size: 1.5em;
+  font-family: mono;
+  border: solid;
+  padding: 20px 40px;
+  background-color: white;
   position: absolute;
-  left: 10px;
-  top: 10px;
-  overflow: visible;
-}
-
-#datum-display {
-  color: #000000;
-}
-
-#toolbar {
-  -webkit-user-select: none;
-}
-
-#toolbar i {
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: auto;
-  height: auto;
-  padding: 0;
-  margin-right: 6px;
-  color: rgba(0, 0, 0, 0.3);
-}
-
-#toolbar i:hover {
-  color: rgba(0, 0, 0, 0.9) !important;
-}
-
-#toolbar i.activated {
-  color: rgba(0, 0, 0, 0.7);
-}
-
-#legend {
-  -webkit-user-select: none;
-  transform: translateY(-50%);
-  position: absolute;
-  right: 10px;
   top: 50%;
-  background-color: rgba(255,255,255,0.8);
-  padding: 5px;
-  max-width: 25%;
-  max-height: 50%;
-  overflow: auto;
-  word-wrap: break-word;
-}
-
-#scale-name {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  font-size: 1.5em;
-}
-
-#legend h2 {
-  cursor: default;
-  margin: 5px;
-  font-size: 1.5em;
-}
-
-#legend .item {
-  cursor: pointer;
-}
-
-#legend .gradient-patch {
-  height: 200px;
-  width: 40px;
-}
-
-#legend .item.dimmed .color-patch {
-  opacity: 0.3;
-}
-
-#legend .item .color-patch {
-  height: 20px;
-  width: 20px;
-  display: inline-flex;
-  margin: 5px;
-  vertical-align: sub;
-}
-
-/* fallback */
-@font-face {
-  font-family: 'Material Icons';
-  font-style: normal;
-  font-weight: 400;
-  src: local('Material Icons'), local('MaterialIcons-Regular'), url(https://fonts.gstatic.com/s/materialicons/v17/2fcrYFNaTjcS6g4U3t-Y5ZjZjT5FdEJ140U2DJYC3mY.woff2) format('woff2');
-}
-
-.material-icons {
-  font-family: 'Material Icons';
-  font-weight: normal;
-  font-style: normal;
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  -webkit-font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
-}
-
-#htmlwidget_container {
-  margin: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 999;
 }

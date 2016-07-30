@@ -1,5 +1,10 @@
 var zp = new ZP.ZP(document.body);
 
+var _help_panel = document.getElementById('help-panel');
+
+window.addEventListener('keydown', () => _help_panel.hidden = true);
+window.addEventListener('mousedown', () => _help_panel.hidden = true);
+
 function getJSON(url, callback) {
   var xhr = new XMLHttpRequest();
   xhr.open("get", url, true);
