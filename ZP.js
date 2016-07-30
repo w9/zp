@@ -32,6 +32,7 @@ ZP.FLOOR_MARGIN = 2;
 ZP.KEY_SCALE_PREV = 'j';
 ZP.KEY_SCALE_NEXT = 'k';
 ZP.KEY_VIEW_RESET = ' ';
+ZP.KEY_TOGGLE_ORTHO_VIEWS = 'Enter';
 ZP.NULL_DISPLAY_AS = 'none';
 ZP.CROSSHAIR_SIZE_FACTOR = 2;
 
@@ -649,6 +650,7 @@ ZP.ZP = function(el_, width_, height_) {
         case ZP.KEY_SCALE_PREV: prevScaleButton.dispatchEvent(new Event('click')); break;
         case ZP.KEY_SCALE_NEXT: nextScaleButton.dispatchEvent(new Event('click')); break;
         case ZP.KEY_VIEW_RESET: resetCameraButton.dispatchEvent(new Event('click')); break;
+        case ZP.KEY_TOGGLE_ORTHO_VIEWS: toggleOrthoButton.dispatchEvent(new Event('click')); break;
       }
     });
     
