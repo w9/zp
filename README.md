@@ -6,11 +6,11 @@ ZP leverages **WebGL** and implements **relational-data plotting language**
 points in a highly interactive and feature-rich environment with minimal visual
 noise.
 
+[Play with it now!](http://60g.org/zp)
+
 This package is written in JavaScript but I made an [interfacing R
 package](https://github.com/w9/zp-r), using
 [htmlwidgets](http://www.htmlwidgets.org/) which can be run in R-Studio.
-
-[Play with it now!](http://60g.org/zp)
 
 ![screencast](https://github.com/w9/w9.github.io/blob/master/zp-screencast.gif)
 
