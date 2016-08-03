@@ -287,6 +287,76 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
 };
 
 
+/**
+ *
+ * TODO: scales_cache = { pc1: { x: <scale> }, group: { y: <scale> }, .. }
+ *
+ * mappings_ . coord . pca = { x: 'pc1'  , y: 'pc2'  , z: 'pc3'  }
+ *                   . mds = { x: 'mds1' , y: 'mds2' , z: 'mds3' }
+ *           . color . group = 'group' 
+ *                   . expr  = 'expr' 
+ *
+ * <Aes> . coord . pca = { x: <scale>, y: <scale>, z: <scale>}
+ *               . mds = { x: <scale>, y: <scale>, z: <scale>}
+ *       . coord_i = 0
+ *       . color . group = <scale>
+ *               . expr  = <scale>
+ *       . color_i = 0
+ *
+ *
+ */
+
+
+ZP.Aes = function(mappings_) {
+  let coord = {};
+  for (let coord_scale_name in mappings_.coord) {
+    let coord_colnames = mappings_.coord[coord_scale_name];
+    _coord[c].x = new ZP.ScaleContinuous(data_[coord_colnames.x]);
+    _coord[c].y = new ZP.ScaleContinuous(data_[coord_colnames.y]);
+    _coord[c].z = new ZP.ScaleContinuous(data_[coord_colnames.z]);
+  }
+
+  for (let color_scale_name in mappings_.color) {
+    let color_colnames = mappings_.color[color_scale_name];
+    _color[c] = new ZP.ScaleContinuous(data_[color_colnames]);
+  }
+
+
+  let _coords = Object.keys(mappings_.coord);
+  let _coord_i = 0;
+  let _coord_name = _coords[_coord_i];
+
+  let _change_coord = function(delta) {
+    _coord_i += delta;
+    _coord_name = _coords[_coord_i];
+  }
+
+  let _get_coord_scale = function() {
+    return 
+  }
+
+  let _colors = Object.keys(mappings_.color);
+  let _color_i = 0;
+  let _color_name = _colors[_color_i];
+
+  let _change_color = function(delta) {
+    _color_i += delta;
+    _color_name = _colors[_color_i];
+  }
+
+  let _get_color_scale = function(delta) {
+  }
+
+
+  this.coord_i      = _coord_i      ;
+  this.coord_name       = _coord_name   ;
+  this.get_coord_scale  = _coord_name   ;
+  this.change_coord = _change_coord ;
+  this.color_i      = _color_i      ;
+  this.color_name   = _color_name   ;
+  this.change_color = _change_color ;
+};
+
 
 /**
  * What's in an Aes (a "presentation" if you will) is very specific to the
@@ -309,7 +379,7 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
  *       . z
  *       . color [optional]
  */
-ZP.Aes = function(attrs_) {
+ZP.OldAes = function(attrs_) {
   if (!attrs_.x || !attrs_.y || !attrs_.z) {
     throw new Error("x, y and z are required in the mapping!");
   }
@@ -602,7 +672,7 @@ ZP.ZP = function(el_, width_, height_) {
           }
         }
       }
-      _aeses[m] = new ZP.Aes(attrs);
+      _aeses[m] = new ZP.OldAes(attrs);
     }
 
     /**
