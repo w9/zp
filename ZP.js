@@ -323,9 +323,9 @@ ZP.Scales = function(data_, mappings_) {
      */
     let ms;
     if (typeof data_[m][0] == 'number') {
-      ms = new ZP.ScaleColorContinuous(data_[m]);
+      ms = new ZP.ScaleColorContinuous(data_[m], m);
     } else {
-      ms = new ZP.ScaleColorDiscrete(data_[m]);
+      ms = new ZP.ScaleColorDiscrete(data_[m], m);
     }
     
     _color.push(ms);
@@ -356,21 +356,27 @@ ZP.Aes = function(data_, mappings_) {
   var _coord_i = 0;
   var _num_coords = _scales.coord.length;
 
+  var _title_DIV = document.createElement('div');
+  _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x]).join(', ');
+
   var _prev_coord = function() {
     _coord_i += _num_coords - 1;
     _coord_i %= _num_coords;
     _current.coord = _scales.coord[_coord_i];
+
+    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x]).join(', ');
   };
 
   var _next_coord = function() {
     _coord_i += _num_coords + 1;
     _coord_i %= _num_coords;
     _current.coord = _scales.coord[_coord_i];
+
+    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x]).join(', ');
   };
 
   var _legend_DIV = document.createElement('div');
   _legend_DIV.appendChild(_current.color.legend);
-  var _title_DIV = document.createElement('div');
 
   var _color_i = 0;
   var _num_colors = _scales.color.length;
@@ -521,7 +527,7 @@ ZP.ZP = function(el_, width_, height_) {
   toolbarDom.appendChild(_prev_coord_BUTTON);
 
   var _next_coord_BUTTON = document.createElement('i');
-  _next_coord_BUTTON.innerText = 'arrow_forward';
+  _next_coord_BUTTON.innerText = 'redo';
   _next_coord_BUTTON.title = 'next coord';
   _next_coord_BUTTON.classList.add('material-icons');
   toolbarDom.appendChild(_next_coord_BUTTON);
@@ -533,7 +539,7 @@ ZP.ZP = function(el_, width_, height_) {
   toolbarDom.appendChild(_prev_color_BUTTON);
 
   var _next_color_BUTTON = document.createElement('i');
-  _next_color_BUTTON.innerText = 'redo';
+  _next_color_BUTTON.innerText = 'arrow_forward';
   _next_color_BUTTON.title = 'next color';
   _next_color_BUTTON.classList.add('material-icons');
   toolbarDom.appendChild(_next_color_BUTTON);
