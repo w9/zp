@@ -186,8 +186,8 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   _legend.reset = function() { _levels.map(l => _change_level(l, _dimmed[l])) };
 
+  this.get_values = x => _values[x];
   this.legend = _legend;
-  this.values = _values;
   this.name = name_;
 
   /**
@@ -218,7 +218,7 @@ ZP.ScaleContinuous = function(vec_, name_) {
   var _high   = Math.max(...vec_);
   var _span   = _high - _low;
 
-  this.values = _values;
+  this.get_values = x => _values[x];
   this.span   = _span;
   this.low    = _low;
   this.high   = _high;
@@ -245,7 +245,15 @@ ZP.ScaleColorBoolean = function(vec_, name_) {
   // TODO
 };
 
+ZP.ScaleColorNone = function() {
+  var _legend = document.createElement('div');
+  _legend.reset = function () {
+    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: ZP.range0(vec_.length) }));
+  };
 
+  this.get_value = () => ZP.COLOR_DEFAULT;
+  this.legend = _legend;
+};
 
 /**
  * Dim "NA" data by default.
@@ -280,7 +288,7 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: ZP.range0(vec_.length) }));
   };
 
-  this.values = _values;
+  this.get_value = x => _values[x];
   this.span   = _span;
   this.low    = _low;
   this.high   = _high;
@@ -317,18 +325,26 @@ ZP.Scales = function(data_, mappings_) {
   }
   
   var _color = [];
-  for (let m of mappings_.color) {
-    /**
-     * m  = 'group'
-     */
-    let ms;
-    if (typeof data_[m][0] == 'number') {
-      ms = new ZP.ScaleColorContinuous(data_[m], m);
-    } else {
-      ms = new ZP.ScaleColorDiscrete(data_[m], m);
+  if (mappings.color.length == 0) {
+    _color = [new ZP.ScaleColorNone()];
+  } else {
+    for (let m of mappings_.color) {
+      /**
+       * m  = 'group'
+       */
+      let ms;
+      if (m === null) {
+        ms = new ZP.ScaleColorNone();
+      } else {
+        if (typeof data_[m][0] == 'number') {
+          ms = new ZP.ScaleColorContinuous(data_[m], m);
+        } else {
+          ms = new ZP.ScaleColorDiscrete(data_[m], m);
+        }
+      }
+      
+      _color.push(ms);
     }
-    
-    _color.push(ms);
   }
   
   this.coord = _coord;
@@ -399,6 +415,10 @@ ZP.Aes = function(data_, mappings_) {
     _legend_DIV.appendChild(_current.color.legend);
   };
 
+  var _reset_color = function() {
+    _current.color.legend.reset();
+  };
+
   this.current = _current;
   this.prev_coord = _prev_coord;
   this.next_coord = _next_coord;
@@ -406,6 +426,7 @@ ZP.Aes = function(data_, mappings_) {
   this.next_color = _next_color;
   this.legend_DIV = _legend_DIV;
   this.title_DIV = _title_DIV;
+  this.reset_color = _reset_color;
 };
 
 
@@ -585,7 +606,7 @@ ZP.ZP = function(el_, width_, height_) {
   var _update_color = function() {
     for (let i in _points) {
       let a = HUSL.fromHex(_points[i].material.color.getHexString());
-      let b = HUSL.fromHex(_aes.current.color.values[i]);
+      let b = HUSL.fromHex(_aes.current.color.get_value(i));
       (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
           _points[i].material.color = new THREE.Color(HUSL.toHex(this[0], this[1], this[2]));
@@ -593,7 +614,7 @@ ZP.ZP = function(el_, width_, height_) {
         .start();
     }
 
-    _aes.current.color.legend.reset();
+    _aes.reset_color();
   }
 
   var _update_coord = function() {
@@ -610,9 +631,9 @@ ZP.ZP = function(el_, width_, height_) {
         x: _points[i].position.z
       };
       let b = {
-        x: _aes.current.coord.x.values[i] * _arena_dims.x,
-        y: _aes.current.coord.y.values[i] * _arena_dims.y,
-        z: _aes.current.coord.z.values[i] * _arena_dims.z
+        x: _aes.current.coord.x.get_value(i) * _arena_dims.x,
+        y: _aes.current.coord.y.get_value(i) * _arena_dims.y,
+        z: _aes.current.coord.z.get_value(i) * _arena_dims.z
       };
 
       (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
@@ -705,14 +726,14 @@ ZP.ZP = function(el_, width_, height_) {
     _scene.add(_floor);
 
     for (let i of _data_indices) {
-      let x = _aes.current.coord.x.values[i] * _arena_dims.x;
-      let y = _aes.current.coord.y.values[i] * _arena_dims.y;
-      let z = _aes.current.coord.z.values[i] * _arena_dims.z;
+      let x = _aes.current.coord.x.get_value(i) * _arena_dims.x;
+      let y = _aes.current.coord.y.get_value(i) * _arena_dims.y;
+      let z = _aes.current.coord.z.get_value(i) * _arena_dims.z;
 
       let datum = _data_rows[i];
       datum['(0-based index)'] = i;
 
-      let color = _aes.current.color ? _aes.current.color.values[i] : ZP.COLOR_DEFAULT;
+      let color = _aes.current.color ? _aes.current.color.get_value(i) : ZP.COLOR_DEFAULT;
       let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) });
       let discSprt = new THREE.Sprite(discMtrl);
       discSprt.position.set( y , z , x );
@@ -878,7 +899,7 @@ ZP.ZP = function(el_, width_, height_) {
       }
     });
 
-
+    _aes.reset_color();
 
     //-------------------- start the engine -------------------//
 
