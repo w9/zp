@@ -1,3 +1,4 @@
+// TODO: deal with nulls in coords
 // TODO: isolate coordinate changes and color changes, and add key shortcuts for each
 // TODO: use svg for the legend of continuous color scale
 // TODO: double click should add a label following that dot, using the "label" aes
@@ -29,8 +30,10 @@ ZP.NEAR = 0.1;
 ZP.FAR = 20000;
 ZP.ANIMATION_DURATION = 250;
 ZP.FLOOR_MARGIN = 2;
-ZP.KEY_SCALE_PREV = 'j';
-ZP.KEY_SCALE_NEXT = 'k';
+ZP.KEY_COORD_PREV = 'j';
+ZP.KEY_COORD_NEXT = 'k';
+ZP.KEY_COLOR_PREV = 'h';
+ZP.KEY_COLOR_NEXT = 'l';
 ZP.KEY_VIEW_RESET = ' ';
 ZP.KEY_TOGGLE_ORTHO_VIEWS = 'Enter';
 ZP.NULL_DISPLAY_AS = 'none';
@@ -348,7 +351,7 @@ ZP.Scales = function(data_, mappings_) {
 ZP.Aes = function(data_, mappings_) {
   var _scales = new ZP.Scales(data_, mappings_);
   
-  var _state = { coord: _scale.coord[0], color: _scale.color[0] };
+  var _current = { coord: _scales.coord[0], color: _scales.color[0] };
 
   var _coord_i = 0;
   var _num_coords = _scales.coord.length;
@@ -356,15 +359,18 @@ ZP.Aes = function(data_, mappings_) {
   var _prev_coord = function() {
     _coord_i += _num_coords - 1;
     _coord_i %= _num_coords;
-    _state.coord = _scales.coord[_coord_i];
+    _current.coord = _scales.coord[_coord_i];
   };
 
   var _next_coord = function() {
     _coord_i += _num_coords + 1;
     _coord_i %= _num_coords;
-    _state.coord = _scales.coord[_coord_i];
+    _current.coord = _scales.coord[_coord_i];
   };
 
+  var _legend_DIV = document.createElement('div');
+  _legend_DIV.appendChild(_current.color.legend);
+  var _title_DIV = document.createElement('div');
 
   var _color_i = 0;
   var _num_colors = _scales.color.length;
@@ -372,20 +378,28 @@ ZP.Aes = function(data_, mappings_) {
   var _prev_color = function() {
     _color_i += _num_colors - 1;
     _color_i %= _num_colors;
-    _state.color = _scales.color[_color_i];
+    _current.color = _scales.color[_color_i];
+
+    _legend_DIV.innerHTML = '';
+    _legend_DIV.appendChild(_current.color.legend);
   };
 
   var _next_color = function() {
     _color_i += _num_colors + 1;
     _color_i %= _num_colors;
-    _state.color = _scales.color[_color_i];
+    _current.color = _scales.color[_color_i];
+
+    _legend_DIV.innerHTML = '';
+    _legend_DIV.appendChild(_current.color.legend);
   };
-  
-  this.state = _state;
+
+  this.current = _current;
   this.prev_coord = _prev_coord;
   this.next_coord = _next_coord;
   this.prev_color = _prev_color;
   this.next_color = _next_color;
+  this.legend_DIV = _legend_DIV;
+  this.title_DIV = _title_DIV;
 };
 
 
@@ -432,27 +446,17 @@ ZP.ZP = function(el_, width_, height_) {
   var _aspect_state = ZP.ASPECT_STATE.NONE;
   var _current_aspect = ZP.ASPECT.ORIGINAL;
 
-  var _scene = new THREE.Scene();
-  var _scene_overlay = new THREE.Scene();
 
-  var _orbit;
-  var _points;
-  var _selected_obj;
+  var _points = [];
+  var _selected_obj = null;
   var _floor;
   var _crosshairs;
   var _ortho = 'none';
 
   var _arena_dims;
 
-  var _disc_txtr;
-
-  var _aeses;
-  var _aeses_names;
-  var _num_aeses;
-  var _current_aes_index;
-  var _current_aes_name;
-  var _current_aes;
-  var _cached_aes;
+  var _disc_txtr = new THREE.Texture(ZP.POINT_ICON);
+  _disc_txtr.needsUpdate = true;
 
   var _dot_size;
 
@@ -463,23 +467,44 @@ ZP.ZP = function(el_, width_, height_) {
   let s = ZP.ORTHO_SHRINK;
   var _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR );
 
+  var _scene = new THREE.Scene();
+  //_scene.fog = new THREE.Fog(0xffffff, 400, 1000);
+  _scene.add( _camera );
+
+  var _scene_overlay = new THREE.Scene();
 
   var _renderer = new THREE.WebGLRenderer( { antialias:true } );
   _renderer.setSize(width_, height_);
   _renderer.setClearColor(0xffffff, 1);
   _renderer.autoClear = false;
 
-  var container = document.createElement('div');
-  container.id = 'plot-container';
-  el_.appendChild(container);
+  var _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0));
+  _orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
+  _orbit.enableDamping = true;
+  _orbit.dampingFactor = 0.4;
+  _orbit.update();
 
-  var _scale_name_div = document.createElement('div');
-  _scale_name_div.id = 'scale-name';
-  el_.appendChild(_scale_name_div);
+  var _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0));
+  _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
+  _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT };
+  _ortho_orbit.enabled = false;
+  _ortho_orbit.enableRotate = false;
+  _ortho_orbit.enableDamping = true;
+  _ortho_orbit.dampingFactor = 0.4;
+  _ortho_orbit.update();
 
-  var _legend_div = document.createElement('div');
-  _legend_div.id = 'legend';
-  el_.appendChild(_legend_div);
+  var _container_DIV = document.createElement('div');
+  _container_DIV.id = 'plot-container';
+  _container_DIV.appendChild( _renderer.domElement );
+  el_.appendChild(_container_DIV);
+
+  var _scale_name_DIV = document.createElement('div');
+  _scale_name_DIV.id = 'scale-name';
+  el_.appendChild(_scale_name_DIV);
+
+  var _legend_DIV = document.createElement('div');
+  _legend_DIV.id = 'legend';
+  el_.appendChild(_legend_DIV);
 
   var overlayDom = document.createElement('div');
   overlayDom.id = 'overlay';
@@ -489,17 +514,29 @@ ZP.ZP = function(el_, width_, height_) {
   toolbarDom.id = 'toolbar';
   overlayDom.appendChild(toolbarDom);
 
-  var prevScaleButton = document.createElement('i');
-  prevScaleButton.innerText = 'undo';
-  prevScaleButton.title = 'previous scale';
-  prevScaleButton.classList.add('material-icons');
-  toolbarDom.appendChild(prevScaleButton);
+  var _prev_coord_BUTTON = document.createElement('i');
+  _prev_coord_BUTTON.innerText = 'undo';
+  _prev_coord_BUTTON.title = 'previous coord';
+  _prev_coord_BUTTON.classList.add('material-icons');
+  toolbarDom.appendChild(_prev_coord_BUTTON);
 
-  var nextScaleButton = document.createElement('i');
-  nextScaleButton.innerText = 'redo';
-  nextScaleButton.title = 'next scale';
-  nextScaleButton.classList.add('material-icons');
-  toolbarDom.appendChild(nextScaleButton);
+  var _next_coord_BUTTON = document.createElement('i');
+  _next_coord_BUTTON.innerText = 'redo';
+  _next_coord_BUTTON.title = 'next coord';
+  _next_coord_BUTTON.classList.add('material-icons');
+  toolbarDom.appendChild(_next_coord_BUTTON);
+
+  var _prev_color_BUTTON = document.createElement('i');
+  _prev_color_BUTTON.innerText = 'undo';
+  _prev_color_BUTTON.title = 'previous color';
+  _prev_color_BUTTON.classList.add('material-icons');
+  toolbarDom.appendChild(_prev_color_BUTTON);
+
+  var _next_color_BUTTON = document.createElement('i');
+  _next_color_BUTTON.innerText = 'redo';
+  _next_color_BUTTON.title = 'next color';
+  _next_color_BUTTON.classList.add('material-icons');
+  toolbarDom.appendChild(_next_color_BUTTON);
 
   var resetCameraButton = document.createElement('i');
   resetCameraButton.innerText = 'youtube_searched_for';
@@ -522,8 +559,8 @@ ZP.ZP = function(el_, width_, height_) {
   var datumDisplay = document.createElement('div');
   overlayDom.appendChild(datumDisplay);
 
-  //var _mouse;
-  var _raycaster;
+  var _raycaster = new THREE.Raycaster();
+
 
   //--------------------- Helper Functions ----------------------//
 
@@ -531,9 +568,9 @@ ZP.ZP = function(el_, width_, height_) {
     if (!aspect || aspect == ZP.ASPECT.EQUAL) {
       _arena_dims = { x: 100, y: 100, z: 100 };
     } else if (aspect == ZP.ASPECT.ORIGINAL) {
-      let rx = _current_aes.x.span;
-      let ry = _current_aes.y.span;
-      let rz = _current_aes.z.span;
+      let rx = _aes.current.coord.x.span;
+      let ry = _aes.current.coord.y.span;
+      let rz = _aes.current.coord.z.span;
       let coef = 300 / (rx + ry + rz);
       _arena_dims = { x: coef * rx, y: coef * ry, z: coef * rz };
     }
@@ -551,9 +588,6 @@ ZP.ZP = function(el_, width_, height_) {
     }
 
     _aes.current.color.legend.reset();
-
-    _legend_div.innerHTML = '';
-    _legend_div.appendChild(_current_aes.color.legend);
   }
 
   var _update_coord = function() {
@@ -589,8 +623,8 @@ ZP.ZP = function(el_, width_, height_) {
       }
     }
 
-    // animate the floor
 
+    // animate the floor
     let m = _dot_size/2 + ZP.FLOOR_MARGIN;
     let dims = {
       x: _arena_dims.x + m,
@@ -636,122 +670,109 @@ ZP.ZP = function(el_, width_, height_) {
   var _on_light = function(e) { _dim_points(e.detail, false) };
 
   this.plot = function(data_, mappings_) {
-    _points = [];
-    //_mouse = new THREE.Vector2(Infinity, Infinity);
-    _raycaster = new THREE.Raycaster();
-    _selected_obj = null;
-
-    _disc_txtr = new THREE.Texture(ZP.POINT_ICON);
-    _disc_txtr.needsUpdate = true;
+    _aes = new ZP.Aes(data_, mappings_);
 
     _data_rows = ZP.colsToRows(data_);
     _data_indices = ZP.range0(_data_rows.length);
-
-    //------------------------- Remap AES -------------------------//
-
-    /**
-     *
-     * scales = { pc1: { x: <scale> }, group: { y: <scale> }, .. }
-     *
-     * mappings_ = { pca: { x: 'pc1'  , y: 'pc2'  , z: 'pc3'  , color: 'group' } ,
-     *               mds: { x: 'mds1' , y: 'mds2' , z: 'mds3' , color: 'group' } }
-     *
-     * TODO: should be based on types instead of aes slots:
-     *       scales = { pc1: { continuous: <scale> }, group: { color_discrete: <scale> }, .. }
-     *
-     *
-     */
-    let scales = {};
-    for (let col in data_) {
-      scales[col] = {};
-    }
-
-    _aeses = {};
-    for (let m in mappings_) {
-      let mapping = mappings_[m];
-      let attrs = {};
-      for (let a in mapping) {
-        let col = mapping[a];
-        if (scales[col][a]) {
-          attrs[a] = scales[col][a];
-        } else {
-          if (a == 'x' || a == 'y' || a == 'z') {
-            attrs[a] = scales[col][a] = new ZP.ScaleContinuous(data_[col], col);
-          } else if (a == 'color') {
-            if (typeof data_[col][0] == 'number') {
-              attrs[a] = scales[col][a] = new ZP.ScaleColorContinuous(data_[col], col);
-            } else {
-              attrs[a] = scales[col][a] = new ZP.ScaleColorDiscrete(data_[col], col);
-            }
-          } else {
-            throw new Error(a + " in mappings is not supported!");
-          }
-        }
-      }
-      _aeses[m] = new ZP.OldAes(attrs);
-    }
-
-    /**
-     * _aeses
-     *
-     *   . pca
-     *       . x     = <scale>
-     *       . y     = <scale>
-     *       . z     = <scale>
-     *       . color = <scale>
-     *
-     *   . mds
-     *       . x     = <scale>
-     *       . y     = <scale>
-     *       . z     = <scale>
-     *       . color = <scale>
-     *
-     */
-
-    _aeses_names = Object.keys(_aeses);
-    _num_aeses = _aeses_names.length;
-
-    // TODO: draw legends for switching between aeses
-
-    var _change_aes = function(by_) {
-      _cached_aes = _current_aes;
-
-      _current_aes_index = (_current_aes_index + _num_aeses + by_) % _num_aeses;
-      _current_aes_name = _aeses_names[_current_aes_index];
-      _scale_name_div.innerText = _current_aes_name;
-
-      _current_aes = _aeses[_current_aes_name];
-    };
-
-    _current_aes_index = 0;
-    _change_aes(0);
+    _dot_size = Math.cbrt(7.5 + 20000 / (_data_indices.length + 20));
 
     _change_aspect_to(ZP.ASPECT.ORIGINAL);
 
-    for (let cs of _aes.scales.color) {
-      cs.legend.addEventListener('dim', _on_dim);
-      cs.legend.addEventListener('light', _on_light);
+    let m = _dot_size/2 + ZP.FLOOR_MARGIN;
+    let dims = {
+      x: _arena_dims.x + m,
+      y: _arena_dims.y + m,
+      z: _arena_dims.z + m
+    };
+    let vs = [
+      { x: -dims.x, y: -dims.y, z: -dims.z },
+      { x: +dims.x, y: -dims.y, z: -dims.z },
+      { x: +dims.x, y: +dims.y, z: -dims.z },
+      { x: -dims.x, y: +dims.y, z: -dims.z },
+      { x: -dims.x, y: -dims.y, z: -dims.z }
+    ];
+
+    let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
+    let floorGtry = new THREE.Geometry();
+    vs.map(v => floorGtry.vertices.push(new THREE.Vector3(v.y, v.z, v.x)));
+    _floor = new THREE.Line(floorGtry, floorMtrl);
+    _scene.add(_floor);
+
+    for (let i of _data_indices) {
+      let x = _aes.current.coord.x.values[i] * _arena_dims.x;
+      let y = _aes.current.coord.y.values[i] * _arena_dims.y;
+      let z = _aes.current.coord.z.values[i] * _arena_dims.z;
+
+      let datum = _data_rows[i];
+      datum['(0-based index)'] = i;
+
+      let color = _aes.current.color ? _aes.current.color.values[i] : ZP.COLOR_DEFAULT;
+      let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) });
+      let discSprt = new THREE.Sprite(discMtrl);
+      discSprt.position.set( y , z , x );
+      discSprt.scale.set( _dot_size, _dot_size, 1 );
+      discSprt.datum = datum;
+      discSprt.dimmed = false;
+      _scene.add( discSprt );
+
+      _points.push(discSprt);
     }
 
-    //------------------------ Handle events ----------------------//
+
+    var crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON);
+    crosshairsTxtr.needsUpdate = true;
+    var crosshairsMtrl = new THREE.SpriteMaterial({
+      map: crosshairsTxtr,
+      color: new THREE.Color('#000000')
+    });
+    _crosshairs = new THREE.Sprite( crosshairsMtrl );
+    _crosshairs.position.set( Infinity, Infinity, Infinity );
+    _crosshairs.visible = false;
+    _crosshairs.tweenObj = { size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR };
+    _crosshairs.tween = new TWEEN.Tween(_crosshairs.tweenObj)
+    _crosshairs.tween.to({ size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR * 1.4 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
+      .onUpdate(function(){ _crosshairs.scale.set(this.size, this.size, 1) })
+      .start()
+    _scene_overlay.add( _crosshairs );
+
+
+
+    //---------------------- configure UI ---------------------//
+
+    _scale_name_DIV.appendChild(_aes.title_DIV);
+    _legend_DIV.appendChild(_aes.legend_DIV);
+    _legend_DIV.addEventListener('dim', _on_dim);
+    _legend_DIV.addEventListener('light', _on_light);
 
     window.addEventListener('keydown', function(e) {
       switch ( e.key ) {
-        case ZP.KEY_SCALE_PREV: prevScaleButton.dispatchEvent(new Event('click')); break;
-        case ZP.KEY_SCALE_NEXT: nextScaleButton.dispatchEvent(new Event('click')); break;
+        case ZP.KEY_COORD_PREV: _prev_coord_BUTTON.dispatchEvent(new Event('click')); break;
+        case ZP.KEY_COORD_NEXT: _next_coord_BUTTON.dispatchEvent(new Event('click')); break;
+        case ZP.KEY_COLOR_PREV: _prev_color_BUTTON.dispatchEvent(new Event('click')); break;
+        case ZP.KEY_COLOR_NEXT: _next_color_BUTTON.dispatchEvent(new Event('click')); break;
         case ZP.KEY_VIEW_RESET: resetCameraButton.dispatchEvent(new Event('click')); break;
         case ZP.KEY_TOGGLE_ORTHO_VIEWS: toggleOrthoButton.dispatchEvent(new Event('click')); break;
       }
     });
     
-    prevScaleButton.addEventListener('click', function(e) {
-      _change_aes(-1);
-      _update_aes();
+    _prev_coord_BUTTON.addEventListener('click', function(e) {
+      _aes.prev_coord();
+      _update_coord();
     });
 
-    nextScaleButton.addEventListener('click', function(e) {
-      _change_aes(1);
-      _update_aes();
+    _next_coord_BUTTON.addEventListener('click', function(e) {
+      _aes.next_coord();
+      _update_coord();
+    });
+
+    _prev_color_BUTTON.addEventListener('click', function(e) {
+      _aes.prev_color();
+      _update_color();
+    });
+
+    _next_color_BUTTON.addEventListener('click', function(e) {
+      _aes.next_color();
+      _update_color();
     });
 
     resetCameraButton.addEventListener('click', function(e) {
@@ -820,18 +841,6 @@ ZP.ZP = function(el_, width_, height_) {
       }
     });
 
-    //-------------------------------------------------------------//
-
-
-    //_scene.fog = new THREE.Fog(0xffffff, 400, 1000);
-
-    _scene.add( _camera );
-
-    //_renderer.domElement.addEventListener('mousemove', function(e) {
-    //  _mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-    //  _mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
-    //});
-
     _renderer.domElement.addEventListener('dblclick', function(e) {
       let undimmed_points = _points.filter(p => p.material.opacity == 1);
 
@@ -863,101 +872,15 @@ ZP.ZP = function(el_, width_, height_) {
       }
     });
 
-    container.appendChild( _renderer.domElement );
 
-    _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0));
-    _orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
-    _orbit.enableDamping = true;
-    _orbit.dampingFactor = 0.4;
-    _orbit.update();
 
-    _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0));
-    _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'}); 
-    _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT };
-    _ortho_orbit.enabled = false;
-    _ortho_orbit.enableRotate = false;
-    _ortho_orbit.enableDamping = true;
-    _ortho_orbit.dampingFactor = 0.4;
-    _ortho_orbit.update();
-
-    _dot_size = Math.cbrt(7.5 + 20000 / (_data_indices.length + 20));
-
-    let m = _dot_size/2 + ZP.FLOOR_MARGIN;
-    let dims = {
-      x: _arena_dims.x + m,
-      y: _arena_dims.y + m,
-      z: _arena_dims.z + m
-    };
-    let vs = [
-      { x: - dims.x, y: - dims.y, z: - dims.z },
-      { x: + dims.x, y: - dims.y, z: - dims.z },
-      { x: + dims.x, y: + dims.y, z: - dims.z },
-      { x: - dims.x, y: + dims.y, z: - dims.z },
-      { x: - dims.x, y: - dims.y, z: - dims.z }
-    ];
-
-    let floorMtrl = new THREE.LineBasicMaterial( { color: 0x777777 });
-    let floorGtry = new THREE.Geometry();
-    vs.map(v => floorGtry.vertices.push(new THREE.Vector3(v.y, v.z, v.x)));
-    _floor = new THREE.Line(floorGtry, floorMtrl);
-    _scene.add(_floor);
-
-    // Sprites
-    
-    for (let i of _data_indices) {
-      // TODO: deal with nulls in these columns
-      let x     = _current_aes.x.values[i] * _arena_dims.x;
-      let y     = _current_aes.y.values[i] * _arena_dims.y;
-      let z     = _current_aes.z.values[i] * _arena_dims.z;
-
-      let datum = _data_rows[i];
-      datum['(0-based index)'] = i;
-
-      let color = _current_aes.color ? _current_aes.color.values[i] : ZP.COLOR_DEFAULT;
-      let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) });
-      let discSprt = new THREE.Sprite(discMtrl);
-      discSprt.position.set( y , z , x );
-      discSprt.scale.set( _dot_size, _dot_size, 1 );
-      discSprt.datum = datum;
-      discSprt.dimmed = false;
-      _scene.add( discSprt );
-
-      _points.push(discSprt);
-    }
-
-    if (_current_aes.color) {
-      _current_aes.color.legend.addEventListener('dim', _on_dim);
-      _current_aes.color.legend.addEventListener('light', _on_light);
-
-      _legend_div.innerHTML = '';
-      _legend_div.appendChild(_current_aes.color.legend);
-
-      _current_aes.color.legend.reset();
-    }
-
-    // overlay scene
-
-    var crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON);
-    crosshairsTxtr.needsUpdate = true;
-    var crosshairsMtrl = new THREE.SpriteMaterial({
-      map: crosshairsTxtr,
-      color: new THREE.Color('#000000')
-    });
-    _crosshairs = new THREE.Sprite( crosshairsMtrl );
-    _crosshairs.position.set( Infinity, Infinity, Infinity );
-    _crosshairs.visible = false;
-    _crosshairs.tweenObj = { size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR };
-    _crosshairs.tween = new TWEEN.Tween(_crosshairs.tweenObj)
-    _crosshairs.tween.to({ size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR * 1.4 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
-      .onUpdate(function(){ _crosshairs.scale.set(this.size, this.size, 1) })
-      .start()
-    _scene_overlay.add( _crosshairs );
+    //-------------------- start the engine -------------------//
 
     animate();
 
     function animate() {
       requestAnimationFrame( animate );
-      render();   
+      render();
       update();
     }
 
