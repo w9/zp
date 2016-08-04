@@ -521,13 +521,13 @@ ZP.ZP = function(el_, width_, height_) {
   toolbarDom.appendChild(_prev_coord_BUTTON);
 
   var _next_coord_BUTTON = document.createElement('i');
-  _next_coord_BUTTON.innerText = 'redo';
+  _next_coord_BUTTON.innerText = 'arrow_forward';
   _next_coord_BUTTON.title = 'next coord';
   _next_coord_BUTTON.classList.add('material-icons');
   toolbarDom.appendChild(_next_coord_BUTTON);
 
   var _prev_color_BUTTON = document.createElement('i');
-  _prev_color_BUTTON.innerText = 'undo';
+  _prev_color_BUTTON.innerText = 'arrow_back';
   _prev_color_BUTTON.title = 'previous color';
   _prev_color_BUTTON.classList.add('material-icons');
   toolbarDom.appendChild(_prev_color_BUTTON);
