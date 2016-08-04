@@ -120,8 +120,11 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   var _vec = vec_.map(f => f === null ? null : f.toString());
 
+
   // sort null last
   var _levels = Array.from(new Set(_vec)).sort((a, b) => ( a === null ? 1 : b === null ? -1 : a > b ));
+
+  console.log(levels);
 
   var _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_;
