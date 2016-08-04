@@ -44,7 +44,7 @@ ZP.normalize = function(xs, low, high) {
 
   return xs.map( x => (x - min)/(max - min) )
            .map( x => low + x * (high - low) );
-}
+};
 
 ZP.range0 = function(hi) {
   let a = [];
@@ -52,7 +52,7 @@ ZP.range0 = function(hi) {
     a.push(i);
   }
   return a;
-}
+};
 
 /**
  * Unlike htmlwidgets.dataframeToD3, this function does minimal check, but it pads nulls when
@@ -110,7 +110,6 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   var _color = {};
   var _legendItem = {};
   var _indices = {};
-  var _dimmed = {};
   var _legend;
 
   // this array will later be destroyed so don't use reference directly
@@ -133,7 +132,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   var _onlyShowOneLevel = function(l) {
     for (let level of _levels) {
-      _change_level(level, !(level == l));
+      _change_level(level, level != l);
     }
   };
 
@@ -186,6 +185,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   this.legend = _legend;
   this.values = _values;
+  this.name = name_;
 
   /**
    * Chromium console test:
@@ -269,12 +269,6 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
   var _high   = Math.max(...vec_);
   var _span   = _high - _low;
 
-  this.values = _values;
-  this.span   = _span;
-  this.low    = _low;
-  this.high   = _high;
-  this.name   = name_;
-
   // TODO
   var _legend = document.createElement('div');
   _legend.innerHTML = '<h2>' + name_ + '</h2>';
@@ -283,7 +277,12 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: ZP.range0(vec_.length) }));
   };
 
+  this.values = _values;
+  this.span   = _span;
+  this.low    = _low;
+  this.high   = _high;
   this.legend = _legend;
+  this.name   = name_;
 };
 
 
@@ -291,70 +290,102 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
  *
  * TODO: scales_cache = { pc1: { x: <scale> }, group: { y: <scale> }, .. }
  *
- * mappings_ . coord . pca = { x: 'pc1'  , y: 'pc2'  , z: 'pc3'  }
- *                   . mds = { x: 'mds1' , y: 'mds2' , z: 'mds3' }
- *           . color . group = 'group' 
- *                   . expr  = 'expr' 
+ * mappings_ . coord = [ { x: 'pc1'  , y: 'pc2'  , z: 'pc3'  },
+ *                       { x: 'mds1' , y: 'mds2' , z: 'mds3' } ]
+ *           . color = [ 'group', 'expr' ]
  *
- * <Aes> . coord . pca = { x: <scale>, y: <scale>, z: <scale>}
- *               . mds = { x: <scale>, y: <scale>, z: <scale>}
- *       . coord_i = 0
- *       . color . group = <scale>
- *               . expr  = <scale>
- *       . color_i = 0
+ * 
+ * <Scales> . coord . [ { x: <scale>, y: <scale>, z: <scale>},
+ *                      { x: <scale>, y: <scale>, z: <scale>} ]
+ *          . color . [ <scale>, <scale> ]
+ */
+ZP.Scales = function(data_, mappings_) {
+  var _coord = [];
+  for (let m of mappings_.coord) {
+    /**
+     * m = { x: "col1", y: "col2", z: "col3" }
+     */
+    let ms = {};
+    ms.x = new ZP.ScaleContinuous(data_[m.x], m.x);
+    ms.y = new ZP.ScaleContinuous(data_[m.y], m.y);
+    ms.z = new ZP.ScaleContinuous(data_[m.z], m.z);
+    
+    _coord.push(ms);
+  }
+  
+  var _color = [];
+  for (let m of mappings_.color) {
+    /**
+     * m  = 'group'
+     */
+    let ms;
+    if (typeof data_[m][0] == 'number') {
+      ms = new ZP.ScaleColorContinuous(data_[m]);
+    } else {
+      ms = new ZP.ScaleColorDiscrete(data_[m]);
+    }
+    
+    _color.push(ms);
+  }
+  
+  this.coord = _coord;
+  this.color = _color;
+};
+
+/**
+ * <Aes>
+ *       . current . coord = { x: <scale>, y: <scale>, z: <scale> }
+ *                 . color = <scale>
+ * 
+ *       . next_coord()
+ *       . prev_coord()
  *
+ *       . next_color()
+ *       . prev_color()
  *
  */
 
+ZP.Aes = function(data_, mappings_) {
+  var _scales = new ZP.Scales(data_, mappings_);
+  
+  var _state = { coord: _scale.coord[0], color: _scale.color[0] };
 
-ZP.Aes = function(mappings_) {
-  let coord = {};
-  for (let coord_scale_name in mappings_.coord) {
-    let coord_colnames = mappings_.coord[coord_scale_name];
-    _coord[c].x = new ZP.ScaleContinuous(data_[coord_colnames.x]);
-    _coord[c].y = new ZP.ScaleContinuous(data_[coord_colnames.y]);
-    _coord[c].z = new ZP.ScaleContinuous(data_[coord_colnames.z]);
-  }
+  var _coord_i = 0;
+  var _num_coords = _scales.coord.length;
 
-  for (let color_scale_name in mappings_.color) {
-    let color_colnames = mappings_.color[color_scale_name];
-    _color[c] = new ZP.ScaleContinuous(data_[color_colnames]);
-  }
+  var _prev_coord = function() {
+    _coord_i += _num_coords - 1;
+    _coord_i %= _num_coords;
+    _state.coord = _scales.coord[_coord_i];
+  };
 
-
-  let _coords = Object.keys(mappings_.coord);
-  let _coord_i = 0;
-  let _coord_name = _coords[_coord_i];
-
-  let _change_coord = function(delta) {
-    _coord_i += delta;
-    _coord_name = _coords[_coord_i];
-  }
-
-  let _get_coord_scale = function() {
-    return 
-  }
-
-  let _colors = Object.keys(mappings_.color);
-  let _color_i = 0;
-  let _color_name = _colors[_color_i];
-
-  let _change_color = function(delta) {
-    _color_i += delta;
-    _color_name = _colors[_color_i];
-  }
-
-  let _get_color_scale = function(delta) {
-  }
+  var _next_coord = function() {
+    _coord_i += _num_coords + 1;
+    _coord_i %= _num_coords;
+    _state.coord = _scales.coord[_coord_i];
+  };
 
 
-  this.coord_i      = _coord_i      ;
-  this.coord_name       = _coord_name   ;
-  this.get_coord_scale  = _coord_name   ;
-  this.change_coord = _change_coord ;
-  this.color_i      = _color_i      ;
-  this.color_name   = _color_name   ;
-  this.change_color = _change_color ;
+  var _color_i = 0;
+  var _num_colors = _scales.color.length;
+
+  var _prev_color = function() {
+    _color_i += _num_colors - 1;
+    _color_i %= _num_colors;
+    _state.color = _scales.color[_color_i];
+  };
+
+  var _next_color = function() {
+    _color_i += _num_colors + 1;
+    _color_i %= _num_colors;
+    _state.color = _scales.color[_color_i];
+  };
+  
+  this.state = _state;
+  this.prev_coord = _prev_coord;
+  this.next_coord = _next_coord;
+  this.prev_color = _prev_color;
+  this.next_color = _next_color;
 };
 
 
@@ -508,41 +539,26 @@ ZP.ZP = function(el_, width_, height_) {
     }
   };
 
-  var _update_aes = function() {
-    // animated colors if updated
-    if (_current_aes.color !== _cached_aes.color) {
-      for (let i in _points) {
-        let a = HUSL.fromHex(_cached_aes.color.values[i]);
-        let b = HUSL.fromHex(_current_aes.color.values[i]);
-        (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-          .onUpdate(function(){
-            _points[i].material.color = new THREE.Color(HUSL.toHex(this[0], this[1], this[2]));
-          })
-          .start();
-      }
-
-      if (_cached_aes) {
-        _cached_aes.color.legend.removeEventListener('dim', _on_dim);
-        _cached_aes.color.legend.removeEventListener('light', _on_light);
-      }
-
-      _current_aes.color.legend.addEventListener('dim', _on_dim);
-      _current_aes.color.legend.addEventListener('light', _on_light);
-      _current_aes.color.legend.reset();
-
-      _legend_div.innerHTML = '';
-      _legend_div.appendChild(_current_aes.color.legend);
+  var _update_color = function() {
+    for (let i in _points) {
+      let a = HUSL.fromHex(_points[i].material.color.getHexString());
+      let b = HUSL.fromHex(_aes.current.color.values[i]);
+      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+        .onUpdate(function(){
+          _points[i].material.color = new THREE.Color(HUSL.toHex(this[0], this[1], this[2]));
+        })
+        .start();
     }
 
-    // animated points if updated
-    if ( _current_aes.x != _cached_aes.x ||
-         _current_aes.y != _cached_aes.y ||
-         _current_aes.z != _cached_aes.z ) {
-      _change_aspect_to(_current_aspect);
-      _update_arena();
-    }
+    _aes.current.color.legend.reset();
 
-    _cached_aes = _current_aes;
+    _legend_div.innerHTML = '';
+    _legend_div.appendChild(_current_aes.color.legend);
+  }
+
+  var _update_coord = function() {
+    _change_aspect_to(_current_aspect);
+    _update_arena();
   };
 
   var _update_arena = function() {
@@ -554,9 +570,9 @@ ZP.ZP = function(el_, width_, height_) {
         x: _points[i].position.z
       };
       let b = {
-        x: _current_aes.x.values[i] * _arena_dims.x,
-        y: _current_aes.y.values[i] * _arena_dims.y,
-        z: _current_aes.z.values[i] * _arena_dims.z
+        x: _aes.current.coord.x.values[i] * _arena_dims.x,
+        y: _aes.current.coord.y.values[i] * _arena_dims.y,
+        z: _aes.current.coord.z.values[i] * _arena_dims.z
       };
 
       (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
@@ -712,6 +728,10 @@ ZP.ZP = function(el_, width_, height_) {
 
     _change_aspect_to(ZP.ASPECT.ORIGINAL);
 
+    for (let cs of _aes.scales.color) {
+      cs.legend.addEventListener('dim', _on_dim);
+      cs.legend.addEventListener('light', _on_light);
+    }
 
     //------------------------ Handle events ----------------------//
 
