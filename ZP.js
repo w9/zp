@@ -357,14 +357,14 @@ ZP.Aes = function(data_, mappings_) {
   var _num_coords = _scales.coord.length;
 
   var _title_DIV = document.createElement('div');
-  _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x]).join(', ');
+  _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ');
 
   var _prev_coord = function() {
     _coord_i += _num_coords - 1;
     _coord_i %= _num_coords;
     _current.coord = _scales.coord[_coord_i];
 
-    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x]).join(', ');
+    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ');
   };
 
   var _next_coord = function() {
@@ -372,7 +372,7 @@ ZP.Aes = function(data_, mappings_) {
     _coord_i %= _num_coords;
     _current.coord = _scales.coord[_coord_i];
 
-    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x]).join(', ');
+    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ');
   };
 
   var _legend_DIV = document.createElement('div');
