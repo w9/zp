@@ -325,7 +325,7 @@ ZP.Scales = function(data_, mappings_) {
   }
   
   var _color = [];
-  if (mappings.color.length == 0) {
+  if (mappings_.color.length == 0) {
     _color = [new ZP.ScaleColorNone()];
   } else {
     for (let m of mappings_.color) {
