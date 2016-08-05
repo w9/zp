@@ -39,9 +39,7 @@ ZP.KEY_TOGGLE_ORTHO_VIEWS = 'Enter';
 ZP.NULL_DISPLAY_AS = 'none';
 ZP.CROSSHAIR_SIZE_FACTOR = 2;
 
-ZP.normalize = function(xs, low, high) {
-  low  = (typeof low  === 'undefined') ? -1 : low;
-  high = (typeof high === 'undefined') ? 1 : high;
+ZP.normalize = function(xs, low=-1, high=1) {
   let min = Math.min.apply(null, xs);
   let max = Math.max.apply(null, xs);
 
