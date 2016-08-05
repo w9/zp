@@ -186,7 +186,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
 
   _legend.reset = function() { _levels.map(l => _change_level(l, _dimmed[l])) };
 
-  this.get_values = x => _values[x];
+  this.get_value = x => _values[x];
   this.legend = _legend;
   this.name = name_;
 
@@ -218,7 +218,7 @@ ZP.ScaleContinuous = function(vec_, name_) {
   var _high   = Math.max(...vec_);
   var _span   = _high - _low;
 
-  this.get_values = x => _values[x];
+  this.get_value = x => _values[x];
   this.span   = _span;
   this.low    = _low;
   this.high   = _high;
@@ -248,7 +248,7 @@ ZP.ScaleColorBoolean = function(vec_, name_) {
 ZP.ScaleColorNone = function() {
   var _legend = document.createElement('div');
   _legend.reset = function () {
-    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: ZP.range0(vec_.length) }));
+    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: 'all' }));
   };
 
   this.get_value = () => ZP.COLOR_DEFAULT;
@@ -285,7 +285,7 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
   _legend.innerHTML = '<h2>' + name_ + '</h2>';
   _legend.innerHTML += '<div style="background: linear-gradient(' + ZP.COLOR_HIGH + ',' + ZP.COLOR_LOW + ')" class="gradient-patch"/>';
   _legend.reset = function() {
-    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: ZP.range0(vec_.length) }));
+    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: 'all' }));
   };
 
   this.get_value = x => _values[x];
@@ -684,6 +684,17 @@ ZP.ZP = function(el_, width_, height_) {
   };
 
   var _dim_points = function(inds, dim) {
+    if (typeof inds === 'string') {
+      switch (inds) {
+        case 'all':
+          inds = _data_indices;
+          break;
+
+        default:
+          break;
+      }
+    }
+
     for (let i of inds) {
       var a = { opacity: _points[i].material.opacity };
       var b = { opacity: dim ? 0.1 : 1 };
