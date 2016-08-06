@@ -609,7 +609,7 @@ ZP.ZP = function(el_, width_, height_) {
     for (let i in _points) {
       let a = HUSL.fromHex(_points[i].material.color.getHexString())
       let b = HUSL.fromHex(_aes.current.color.get_value(i))
-      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
           _points[i].material.color = new THREE.Color(HUSL.toHex(this[0], this[1], this[2]))
         })
@@ -638,13 +638,13 @@ ZP.ZP = function(el_, width_, height_) {
         z: _aes.current.coord.z.get_value(i) * _arena_dims.z
       }
 
-      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x) })
         .start()
 
       // animate the crosshairs
       if (_points[i] === _selected_obj) {
-        (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){
             _crosshairs.position.set(this.y, this.z, this.x)
           })
@@ -676,7 +676,7 @@ ZP.ZP = function(el_, width_, height_) {
       }
       let b = vs[i]
 
-      (new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
         .onUpdate(function(){
           _floor.geometry.vertices[i].set(this.y, this.z, this.x)
           _floor.geometry.verticesNeedUpdate = true
