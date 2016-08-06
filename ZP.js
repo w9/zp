@@ -39,6 +39,10 @@ ZP.KEY_TOGGLE_ORTHO_VIEWS = 'Enter';
 ZP.NULL_DISPLAY_AS = 'none';
 ZP.CROSSHAIR_SIZE_FACTOR = 2;
 
+ZP.DEFAULT_OPTIONS = {
+  debug: false
+}
+
 ZP.normalize = function(xs, low=-1, high=1) {
   let min = Math.min.apply(null, xs);
   let max = Math.max.apply(null, xs);
@@ -705,10 +709,16 @@ ZP.ZP = function(el_, width_, height_) {
   var _on_dim = function(e) { _dim_points(e.detail, true) };
   var _on_light = function(e) { _dim_points(e.detail, false) };
 
-  this.plot = function(data_, mappings_) {
+  this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
+    if (options_.debug) { console.log('data_ = ', data_) }
+    if (options_.debug) { console.log('mappings_ = ', mappings_) }
+
     _aes = new ZP.Aes(data_, mappings_);
+    if (options_.debug) { console.log('_aes = ', _aes) }
 
     _data_rows = ZP.colsToRows(data_);
+    if (options_.debug) { console.log('_data_rows = ', _data_rows) }
+
     _data_indices = ZP.range0(_data_rows.length);
     _dot_size = Math.cbrt(7.5 + 20000 / (_data_indices.length + 20));
 
@@ -754,6 +764,7 @@ ZP.ZP = function(el_, width_, height_) {
       _points.push(discSprt);
     }
 
+    if (options_.debug) { console.log('_points = ', _points) }
 
     var crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON);
     crosshairsTxtr.needsUpdate = true;
