@@ -21,9 +21,22 @@ ZP.ASPECT = { EQUAL: 0, ORIGINAL: 1 }
 ZP.ASPECT_STATE = { NONE: 0, TRANSITIONING: 1 }
 
 ZP.COLOR_DEFAULT = '#555555'
-ZP.COLOR_PALETTE = ['#01a0e4','#db2d20','#01a252','#a16a94']
+
+ZP.COLOR_PALETTE = [
+  '#01a0e4' , '#db2d20' , '#01a252' , '#a16a94' , '#332288' ,
+  '#ddcc77' , '#cc6677' , '#882255' , '#aa4499' , '#661100' ,
+  '#d7ef75' , '#88ccee' , '#44aa99' , '#117733' , '#999933' ,
+  '#6699cc' , '#aa4466' , '#4477aa'
+]
+
 ZP.COLOR_LOW = '#56b1f7'
 ZP.COLOR_HIGH = '#132b43'
+
+ZP.CC_PATCH_WIDTH = 20
+ZP.CC_PATCH_HEIGHT = 130
+ZP.CC_PATCH_MARGIN = 10
+ZP.CC_PATCH_LABEL_MARGIN = 5
+
 ZP.VIEW_ANGLE = 45
 ZP.ORTHO_SHRINK = 180
 ZP.NEAR = 0.1
@@ -53,7 +66,7 @@ ZP.normalize = function(xs, low=-1, high=1) {
 
 ZP.range0 = function(hi) {
   let a = []
-  for (var i = 0; i < hi; i++) {
+  for (let i = 0; i < hi; i++) {
     a.push(i)
   }
   return a
@@ -67,8 +80,8 @@ ZP.range0 = function(hi) {
  * serialized into JSON.
  */
 ZP.colsToRows = function(cols_) {
-  var _cols = JSON.parse(JSON.stringify(cols_))
-  var _rows = []
+  let _cols = JSON.parse(JSON.stringify(cols_))
+  let _rows = []
   while (true) {
     let flag = true
     let row = {}
@@ -109,44 +122,44 @@ ZP.colsToRows = function(cols_) {
  *                      . legend    = <div>
  */
 ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
-  var _this = this
+  let _this = this
 
-  var _dimmed = {}
-  var _color = {}
-  var _legendItem = {}
-  var _indices = {}
-  var _legend
+  let _dimmed = {}
+  let _color = {}
+  let _legendItem = {}
+  let _indices = {}
+  let _legend
 
   // this array will later be destroyed so don't use reference directly
-  var _palette = (palette_ || ZP.COLOR_PALETTE).slice()
+  let _palette = (palette_ || ZP.COLOR_PALETTE).slice()
 
-  var _vec = vec_.map(f => f === null ? null : f.toString())
+  let _vec = vec_.map(f => f === null ? null : f.toString())
 
   // sort null last
-  var _levels = Array.from(new Set(_vec)).sort((a, b) => ( a === null ? 1 : b === null ? -1 : a > b ))
+  let _levels = Array.from(new Set(_vec)).sort((a, b) => ( a === null ? 1 : b === null ? -1 : a > b ))
 
-  var _change_level = function(l, new_dimmed_) {
+  let _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_
     _legendItem[l].classList[new_dimmed_ ? 'add' : 'remove']('dimmed')
     _legend.dispatchEvent(new CustomEvent(new_dimmed_ ? 'dim' : 'light', { bubbles: true, detail: _indices[l] }))
   }
   
-  var _toggleLevel = function(l) {
+  let _toggleLevel = function(l) {
     _change_level(l, !_dimmed[l])
   }
 
-  var _onlyShowOneLevel = function(l) {
+  let _onlyShowOneLevel = function(l) {
     for (let level of _levels) {
       _change_level(level, level != l)
     }
   }
 
-  var _toggleAllLevels = function() {
+  let _toggleAllLevels = function() {
     let all_dimmed = _levels.every(l => _dimmed[l])
     _levels.map(l => _change_level(l, !all_dimmed))
   }
 
-  var _format_legend_text = function(t) {
+  let _format_legend_text = function(t) {
     if (t === null) {
       return ZP.NULL_DISPLAY_AS
     } else {
@@ -184,7 +197,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
     if (l === null) { _change_level(l, true) }
   }
 
-  var _values = _vec.map(f => _color[f])
+  let _values = _vec.map(f => _color[f])
 
   _legend.reset = function() { _levels.map(l => _change_level(l, _dimmed[l])) }
 
@@ -195,7 +208,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   /**
    * Chromium console test:
    *
-   * var s = new ZP.ScaleColorDiscrete(['v', 'a', 'a', 'b', 'b', 'a'], 'adfaf')
+   * let s = new ZP.ScaleColorDiscrete(['v', 'a', 'a', 'b', 'b', 'a'], 'adfaf')
    * document.getElementById('legend').appendChild(s.legend)
    * document.getElementById('legend').addEventListener('dim', e => console.log(e))
    * document.getElementById('legend').addEventListener('light', e => console.log(e))
@@ -214,11 +227,11 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
  *                  . name      = 'pc1'
  */
 ZP.ScaleContinuous = function(vec_, name_) {
-  var _values = ZP.normalize(vec_)
+  let _values = ZP.normalize(vec_)
 
-  var _low    = Math.min(...vec_)
-  var _high   = Math.max(...vec_)
-  var _span   = _high - _low
+  let _low    = Math.min(...vec_)
+  let _high   = Math.max(...vec_)
+  let _span   = _high - _low
 
   this.get_value = x => _values[x]
   this.span   = _span
@@ -229,7 +242,7 @@ ZP.ScaleContinuous = function(vec_, name_) {
   /**
    * Chromium console test:
    *
-   * var s = new ZP.ScaleContinuous([0, 1, 10, 1, 2], 'adfaf')
+   * let s = new ZP.ScaleContinuous([0, 1, 10, 1, 2], 'adfaf')
    *
    */
 }
@@ -248,7 +261,7 @@ ZP.ScaleColorBoolean = function(vec_, name_) {
 }
 
 ZP.ScaleColorNone = function() {
-  var _legend = document.createElement('div')
+  let _legend = document.createElement('div')
   _legend.reset = function () {
     _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: 'all' }))
   }
@@ -265,11 +278,11 @@ ZP.ScaleColorNone = function() {
  *                       . legend    = <div>
  */
 ZP.ScaleColorContinuous = function(vec_, name_) {
-  var _norms = ZP.normalize(vec_, 0, 1)
-  var _huslLow = HUSL.fromHex(ZP.COLOR_LOW)
-  var _huslHigh = HUSL.fromHex(ZP.COLOR_HIGH)
+  let _norms = ZP.normalize(vec_, 0, 1)
+  let _huslLow = HUSL.fromHex(ZP.COLOR_LOW)
+  let _huslHigh = HUSL.fromHex(ZP.COLOR_HIGH)
 
-  var _values = []
+  let _values = []
   for (let x of _norms) {
     let ys = []
     for (let i in _huslLow) {
@@ -278,16 +291,43 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     _values.push(HUSL.toHex(...ys))
   }
 
-  var _low    = Math.min(...vec_)
-  var _high   = Math.max(...vec_)
-  var _span   = _high - _low
+  let _low    = Math.min(...vec_)
+  let _high   = Math.max(...vec_)
+  let _span   = _high - _low
 
   // TODO
-  var _legend = document.createElement('div')
+  let _legend = document.createElement('div')
   _legend.innerHTML = `<h2>${name_}</h2>`
-  _legend.innerHTML += `<div style="background: linear-gradient(${ZP.COLOR_HIGH},${ZP.COLOR_LOW})" class="gradient-patch"/>`
+  _legend.innerHTML +=
+    `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="scale-color-continuous-svg">` +
+			`<defs>` +
+				`<linearGradient id="gradient" x1="0" y1="1" x2="0" y2="0">` +
+					`<stop stop-color="${ZP.COLOR_LOW}" offset="0%"/>` +
+					`<stop stop-color="${ZP.COLOR_HIGH}" offset="100%"/>` +
+				`</linearGradient>` +
+			`</defs>` +
+      `<rect x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#gradient)"/>` +
+      `<line x1="0" y1="0.5" x2="30" y2="0.5" stroke="black"/>` +
+      `<line x1="0" y1="${ZP.CC_PATCH_HEIGHT-0.5}" x2="${ZP.CC_PATCH_WIDTH+10}" y2="${ZP.CC_PATCH_HEIGHT-0.5}" stroke="black"/>` +
+      `<text x="${30+ZP.CC_PATCH_LABEL_MARGIN}" y="0.5" alignment-baseline="middle" text-anchor="start" font-size="0.8em">${_high}</text>` +
+      `<text x="${30+ZP.CC_PATCH_LABEL_MARGIN}" y="${ZP.CC_PATCH_HEIGHT-0.5}" alignment-baseline="middle" text-anchor="start" font-size="0.8em">${_low}</text>` +
+    `</svg>`
+
   _legend.reset = function() {
     _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: 'all' }))
+
+    let svg = document.getElementById("scale-color-continuous-svg")
+    let bbox = svg.getBBox();
+    let mbox = {
+      x: bbox.x - ZP.CC_PATCH_MARGIN,
+      y: bbox.y - ZP.CC_PATCH_MARGIN,
+      width: bbox.width + 2 * ZP.CC_PATCH_MARGIN,
+      height: bbox.height + 2 * ZP.CC_PATCH_MARGIN,
+    }
+    let viewBox = [mbox.x, mbox.y, mbox.width, mbox.height]
+    svg.setAttribute('viewBox', viewBox.join(' '))
+    svg.setAttribute('width', mbox.width)
+    svg.setAttribute('height', mbox.height)
   }
 
   this.get_value = x => _values[x]
@@ -313,7 +353,7 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
  *          . color . [ <scale>, <scale> ]
  */
 ZP.Scales = function(data_, mappings_) {
-  var _coord = []
+  let _coord = []
   for (let m of mappings_.coord) {
     /**
      * m = { x: "col1", y: "col2", z: "col3" }
@@ -326,7 +366,7 @@ ZP.Scales = function(data_, mappings_) {
     _coord.push(ms)
   }
   
-  var _color = []
+  let _color = []
   if (mappings_.color.length == 0) {
     _color = [new ZP.ScaleColorNone()]
   } else {
@@ -367,17 +407,17 @@ ZP.Scales = function(data_, mappings_) {
  */
 
 ZP.Aes = function(data_, mappings_) {
-  var _scales = new ZP.Scales(data_, mappings_)
+  let _scales = new ZP.Scales(data_, mappings_)
   
-  var _current = { coord: _scales.coord[0], color: _scales.color[0] }
+  let _current = { coord: _scales.coord[0], color: _scales.color[0] }
 
-  var _coord_i = 0
-  var _num_coords = _scales.coord.length
+  let _coord_i = 0
+  let _num_coords = _scales.coord.length
 
-  var _title_DIV = document.createElement('div')
+  let _title_DIV = document.createElement('div')
   _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
 
-  var _prev_coord = function() {
+  let _prev_coord = function() {
     _coord_i += _num_coords - 1
     _coord_i %= _num_coords
     _current.coord = _scales.coord[_coord_i]
@@ -385,7 +425,7 @@ ZP.Aes = function(data_, mappings_) {
     _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
   }
 
-  var _next_coord = function() {
+  let _next_coord = function() {
     _coord_i += _num_coords + 1
     _coord_i %= _num_coords
     _current.coord = _scales.coord[_coord_i]
@@ -393,13 +433,13 @@ ZP.Aes = function(data_, mappings_) {
     _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
   }
 
-  var _legend_DIV = document.createElement('div')
+  let _legend_DIV = document.createElement('div')
   _legend_DIV.appendChild(_current.color.legend)
 
-  var _color_i = 0
-  var _num_colors = _scales.color.length
+  let _color_i = 0
+  let _num_colors = _scales.color.length
 
-  var _prev_color = function() {
+  let _prev_color = function() {
     _color_i += _num_colors - 1
     _color_i %= _num_colors
     _current.color = _scales.color[_color_i]
@@ -408,7 +448,7 @@ ZP.Aes = function(data_, mappings_) {
     _legend_DIV.appendChild(_current.color.legend)
   }
 
-  var _next_color = function() {
+  let _next_color = function() {
     _color_i += _num_colors + 1
     _color_i %= _num_colors
     _current.color = _scales.color[_color_i]
@@ -417,7 +457,7 @@ ZP.Aes = function(data_, mappings_) {
     _legend_DIV.appendChild(_current.color.legend)
   }
 
-  var _reset_color = function() {
+  let _reset_color = function() {
     _current.color.legend.reset()
   }
 
@@ -467,53 +507,53 @@ ZP.OldAes = function(attrs_) {
 
 
 ZP.ZP = function(el_, width_, height_) {
-  var _aes
+  let _aes
 
-  var _data_rows
-  var _data_indices
+  let _data_rows
+  let _data_indices
 
-  var _aspect_state = ZP.ASPECT_STATE.NONE
-  var _current_aspect = ZP.ASPECT.ORIGINAL
+  let _aspect_state = ZP.ASPECT_STATE.NONE
+  let _current_aspect = ZP.ASPECT.ORIGINAL
 
 
-  var _points = []
-  var _selected_obj = null
-  var _floor
-  var _crosshairs
-  var _ortho = 'none'
+  let _points = []
+  let _selected_obj = null
+  let _floor
+  let _crosshairs
+  let _ortho = 'none'
 
-  var _arena_dims
+  let _arena_dims
 
-  var _disc_txtr = new THREE.Texture(ZP.POINT_ICON)
+  let _disc_txtr = new THREE.Texture(ZP.POINT_ICON)
   _disc_txtr.needsUpdate = true
 
-  var _dot_size
+  let _dot_size
 
   let ar = width_ / height_
-  var _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR )
+  let _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR )
   _camera.position.set( -400, 0, -130 )
 
   let s = ZP.ORTHO_SHRINK
-  var _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR )
+  let _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR )
 
-  var _scene = new THREE.Scene()
+  let _scene = new THREE.Scene()
   //_scene.fog = new THREE.Fog(0xffffff, 400, 1000)
   _scene.add( _camera )
 
-  var _scene_overlay = new THREE.Scene()
+  let _scene_overlay = new THREE.Scene()
 
-  var _renderer = new THREE.WebGLRenderer( { antialias:true } )
+  let _renderer = new THREE.WebGLRenderer( { antialias:true } )
   _renderer.setSize(width_, height_)
   _renderer.setClearColor(0xffffff, 1)
   _renderer.autoClear = false
 
-  var _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0))
+  let _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0))
   _orbit.addEventListener('userRotate', function(e){_ortho = 'none'})
   _orbit.enableDamping = true
   _orbit.dampingFactor = 0.4
   _orbit.update()
 
-  var _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0))
+  let _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0))
   _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'})
   _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT }
   _ortho_orbit.enabled = false
@@ -522,78 +562,78 @@ ZP.ZP = function(el_, width_, height_) {
   _ortho_orbit.dampingFactor = 0.4
   _ortho_orbit.update()
 
-  var _container_DIV = document.createElement('div')
+  let _container_DIV = document.createElement('div')
   _container_DIV.id = 'plot-container'
   _container_DIV.appendChild( _renderer.domElement )
   el_.appendChild(_container_DIV)
 
-  var _scale_name_DIV = document.createElement('div')
+  let _scale_name_DIV = document.createElement('div')
   _scale_name_DIV.id = 'scale-name'
   el_.appendChild(_scale_name_DIV)
 
-  var _legend_DIV = document.createElement('div')
+  let _legend_DIV = document.createElement('div')
   _legend_DIV.id = 'legend'
   el_.appendChild(_legend_DIV)
 
-  var overlayDom = document.createElement('div')
+  let overlayDom = document.createElement('div')
   overlayDom.id = 'overlay'
   el_.appendChild(overlayDom)
 
-  var toolbarDom = document.createElement('div')
+  let toolbarDom = document.createElement('div')
   toolbarDom.id = 'toolbar'
   overlayDom.appendChild(toolbarDom)
 
-  var _prev_coord_BUTTON = document.createElement('i')
+  let _prev_coord_BUTTON = document.createElement('i')
   _prev_coord_BUTTON.innerText = 'undo'
   _prev_coord_BUTTON.title = 'previous coord'
   _prev_coord_BUTTON.classList.add('material-icons')
   toolbarDom.appendChild(_prev_coord_BUTTON)
 
-  var _next_coord_BUTTON = document.createElement('i')
+  let _next_coord_BUTTON = document.createElement('i')
   _next_coord_BUTTON.innerText = 'redo'
   _next_coord_BUTTON.title = 'next coord'
   _next_coord_BUTTON.classList.add('material-icons')
   toolbarDom.appendChild(_next_coord_BUTTON)
 
-  var _prev_color_BUTTON = document.createElement('i')
+  let _prev_color_BUTTON = document.createElement('i')
   _prev_color_BUTTON.innerText = 'arrow_back'
   _prev_color_BUTTON.title = 'previous color'
   _prev_color_BUTTON.classList.add('material-icons')
   toolbarDom.appendChild(_prev_color_BUTTON)
 
-  var _next_color_BUTTON = document.createElement('i')
+  let _next_color_BUTTON = document.createElement('i')
   _next_color_BUTTON.innerText = 'arrow_forward'
   _next_color_BUTTON.title = 'next color'
   _next_color_BUTTON.classList.add('material-icons')
   toolbarDom.appendChild(_next_color_BUTTON)
 
-  var resetCameraButton = document.createElement('i')
+  let resetCameraButton = document.createElement('i')
   resetCameraButton.innerText = 'youtube_searched_for'
   resetCameraButton.title = 'reset camera angle'
   resetCameraButton.classList.add('material-icons')
   toolbarDom.appendChild(resetCameraButton)
 
-  var toggleAspectButton = document.createElement('i')
+  let toggleAspectButton = document.createElement('i')
   toggleAspectButton.innerText = 'aspect_ratio'
   toggleAspectButton.title = 'toggle aspect ratio between 1:1:1 and original'
   toggleAspectButton.classList.add('material-icons')
   toolbarDom.appendChild(toggleAspectButton)
 
-  var toggleOrthoButton = document.createElement('i')
+  let toggleOrthoButton = document.createElement('i')
   toggleOrthoButton.innerText = 'call_merge'
   toggleOrthoButton.title = 'toggle between orthographic and perspective camera'
   toggleOrthoButton.classList.add('material-icons')
   toolbarDom.appendChild(toggleOrthoButton)
 
-  var datumDisplay = document.createElement('div')
+  let datumDisplay = document.createElement('div')
   overlayDom.appendChild(datumDisplay)
 
-  var _raycaster = new THREE.Raycaster()
+  let _raycaster = new THREE.Raycaster()
 
 
   //--------------------- Helper Functions ----------------------//
 
-  var _change_aspect_to = function(aspect) {
+  let _change_aspect_to = function(aspect) {
     if (!aspect || aspect == ZP.ASPECT.EQUAL) {
       _arena_dims = { x: 100, y: 100, z: 100 }
     } else if (aspect == ZP.ASPECT.ORIGINAL) {
@@ -605,7 +645,7 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  var _update_color = function() {
+  let _update_color = function() {
     for (let i in _points) {
       let a = HUSL.fromHex(_points[i].material.color.getHexString())
       let b = HUSL.fromHex(_aes.current.color.get_value(i))
@@ -619,12 +659,12 @@ ZP.ZP = function(el_, width_, height_) {
     _aes.reset_color()
   }
 
-  var _update_coord = function() {
+  let _update_coord = function() {
     _change_aspect_to(_current_aspect)
     _update_arena()
   }
 
-  var _update_arena = function() {
+  let _update_arena = function() {
     // animate the points
     for (let i in _points) {
       let a = {
@@ -685,7 +725,7 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  var _dim_points = function(inds, dim) {
+  let _dim_points = function(inds, dim) {
     if (typeof inds === 'string') {
       switch (inds) {
         case 'all':
@@ -707,8 +747,8 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  var _on_dim = function(e) { _dim_points(e.detail, true) }
-  var _on_light = function(e) { _dim_points(e.detail, false) }
+  let _on_dim = function(e) { _dim_points(e.detail, true) }
+  let _on_light = function(e) { _dim_points(e.detail, false) }
 
   this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
     if (options_.debug) { console.log('data_ = ', data_) }
@@ -767,9 +807,9 @@ ZP.ZP = function(el_, width_, height_) {
 
     if (options_.debug) { console.log('_points = ', _points) }
 
-    var crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON)
+    let crosshairsTxtr = new THREE.Texture(ZP.CROSSHAIRS_ICON)
     crosshairsTxtr.needsUpdate = true
-    var crosshairsMtrl = new THREE.SpriteMaterial({
+    let crosshairsMtrl = new THREE.SpriteMaterial({
       map: crosshairsTxtr,
       color: new THREE.Color('#000000')
     })
@@ -901,12 +941,12 @@ ZP.ZP = function(el_, width_, height_) {
       } else {
         _raycaster.setFromCamera( mouse, _ortho_camera )
       }
-      var intersects = _raycaster.intersectObjects( undimmed_points )
+      let intersects = _raycaster.intersectObjects( undimmed_points )
       if (intersects.length > 0) {
         if (intersects[0].object != _selected_obj) {
           _selected_obj = intersects[0].object
-          var outputs = []
-          for (var prop in _selected_obj.datum) {
+          let outputs = []
+          for (let prop in _selected_obj.datum) {
             outputs.push(prop + ' = ' + _selected_obj.datum[prop])
           }
           datumDisplay.innerText = outputs.join('\n')
