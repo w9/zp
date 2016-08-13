@@ -17,5 +17,6 @@
       { "x":"pc1","y":"pc2","z":"pc3" }
     ],
     "color" : [ "avg_log_exp", null, "patient" ]
-  }
+  },
+  "options" : { "debug": false, "title": "Glioblastoma Single-Cell RNA-Seq" }
 }

@@ -1,10 +1,11 @@
+// TODO: make the color changes event-base as well, and change the legends to be more in control of the arena
+// TODO: use pretty scales (1, 2, 5, 10 ticks) for the continuous color scale
 // TODO: deal with nulls in coords
 // TODO: isolate coordinate changes and color changes, and add key shortcuts for each
 // TODO: use svg for the legend of continuous color scale
 // TODO: double click should add a label following that dot, using the "label" aes
 // TODO: add "multiple coordinates" functionality (e.g., for PCA and MDS), and maybe multiple **mappings** as well
 // TODO: add **instant type** search functionality, very useful when the dots are overwhelmingly many
-// TODO: use pretty scales (1, 2, 5, 10 ticks) used in ggplot2, drawing gray lines is good enough 
 // TODO: should be able to specify a label layer
 // TODO: change the base to something like http://threejs.org/examples/#webgl_geometry_spline_editor, exept it's infinitely large and there's fog
 // TODO: add drop shadow to the base, looks great
@@ -17,7 +18,6 @@ var ZP = ZP || {}
 
 ZP.ASPECT = { EQUAL: 0, ORIGINAL: 1 }
 ZP.ASPECT_STATE = { NONE: 0, TRANSITIONING: 1 }
-
 ZP.COLOR_DEFAULT = '#555555'
 
 ZP.COLOR_PALETTE = [
@@ -27,8 +27,10 @@ ZP.COLOR_PALETTE = [
   '#6699cc' , '#aa4466' , '#4477aa'
 ]
 
-ZP.COLOR_LOW = '#56b1f7'
-ZP.COLOR_HIGH = '#132b43'
+ZP.CC_OPACITY_LOW = 0.5
+ZP.CC_OPACITY_HIGH = 1
+ZP.CC_LOW = '#56b1f7'
+ZP.CC_HIGH = '#132b43'
 
 ZP.CC_PATCH_WIDTH = 20
 ZP.CC_PATCH_HEIGHT = 130
@@ -74,9 +76,31 @@ ZP.range0 = function(hi) {
   return a
 }
 
+ZP.legend_action_event = function(detail_) {
+  return (new CustomEvent('legend_action', { bubbles: true, detail: detail_ }))
+}
+
 ZP.pretty_breaks = function(vec_) {
   // TODO
 }
+
+ZP.hex_to_rgba = function(hex_, alpha_=1) {
+  let hex = hex_.match(/[0-9a-fA-F]{6}/)[0]
+  let r = parseInt(hex.slice(0,2), 16)
+  let g = parseInt(hex.slice(2,4), 16)
+  let b = parseInt(hex.slice(4,6), 16)
+  return [r, g, b, alpha_]
+}
+
+ZP.rgba_to_hex = function(rgba_) {
+  let r = Math.round(rgba_[0]).toString(16)
+  let g = Math.round(rgba_[1]).toString(16)
+  let b = Math.round(rgba_[2]).toString(16)
+  return '#' + [r, g, b].map(s => ('00' + s).slice(-2)).join('')
+}
+
+
+
 
 /**
  * Unlike htmlwidgets.dataframeToD3, this function does minimal check, but it pads nulls when
@@ -147,10 +171,8 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   let _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_
     _legendItem[l].classList[new_dimmed_ ? 'add' : 'remove']('dimmed')
-    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: {
-      type: 'opacity', indices: _indices[l], opacity: new_dimmed_ ? 0.1 : 1 } }))
-    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: {
-      type: 'selectability', indices: _indices[l], selectability: !new_dimmed_ } }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', indices: _indices[l], opacity: new_dimmed_ ? 0.1 : 1 }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'selectability', indices: _indices[l], selectability: !new_dimmed_ }))
   }
   
   let _toggleLevel = function(l) {
@@ -206,23 +228,15 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
     if (l === null) { _change_level(l, true) }
   }
 
-  let _values = _vec.map(f => _color[f])
+  _legend.reset = function() {
+    for (l of _levels) {
+      _legend.dispatchEvent(ZP.legend_action_event({ type: 'color', indices: _indices[l], color: _color[l] }))
+      _change_level(l, _dimmed[l])
+    }
+  }
 
-  _legend.reset = function() { _levels.map(l => _change_level(l, _dimmed[l])) }
-
-  this.get_value = x => _values[x]
   this.legend = _legend
   this.name = name_
-
-  /**
-   * Chromium console test:
-   *
-   * let s = new ZP.ScaleColorDiscrete(['v', 'a', 'a', 'b', 'b', 'a'], 'adfaf')
-   * document.getElementById('legend').appendChild(s.legend)
-   * document.getElementById('legend').addEventListener('dim', e => console.log(e))
-   * document.getElementById('legend').addEventListener('light', e => console.log(e))
-   *
-   */
 }
 
 
@@ -279,18 +293,18 @@ ZP.ScaleColorNone = function() {
     `</div>`
 
   let _change_opacity_to = function(opacity_, animation_=true) {
-    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'opacity', opacity: opacity_, animation: animation_} }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', opacity: opacity_, animation: animation_ }))
   }
 
   let _opacity_slider = _legend.querySelector('#scn-opacity-slider')
   _opacity_slider.addEventListener('input', e => _change_opacity_to(_opacity_slider.value, false))
 
   _legend.reset = function () {
-    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'selectability' } }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'color' }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'selectability' }))
     _change_opacity_to(_opacity_slider.value)
   }
 
-  this.get_value = () => ZP.COLOR_DEFAULT
   this.legend = _legend
 }
 
@@ -303,17 +317,19 @@ ZP.ScaleColorNone = function() {
  */
 ZP.ScaleColorContinuous = function(vec_, name_) {
   let _norms = ZP.normalize(vec_, 0, 1)
-  let _huslLow = HUSL.fromHex(ZP.COLOR_LOW)
-  let _huslHigh = HUSL.fromHex(ZP.COLOR_HIGH)
+  let _huslLow = ZP.hex_to_rgba(ZP.CC_LOW)
+  let _huslHigh = ZP.hex_to_rgba(ZP.CC_HIGH)
 
-  let _values = []
+  let _colors = []
   for (let x of _norms) {
     let ys = []
-    for (let i in _huslLow) {
+    for (let i of [0,1,2]) {
       ys.push(_huslLow[i] + x * (_huslHigh[i] - _huslLow[i]))
     }
-    _values.push(HUSL.toHex(...ys))
+    _colors.push(ZP.rgba_to_hex(ys))
   }
+
+  let _opacities = ZP.normalize(vec_, ZP.CC_OPACITY_LOW, ZP.CC_OPACITY_HIGH)
 
   let _low    = Math.min(...vec_)
   let _high   = Math.max(...vec_)
@@ -326,8 +342,8 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="scale-color-continuous-svg">` +
 			`<defs>` +
 				`<linearGradient id="gradient" x1="0" y1="1" x2="0" y2="0">` +
-					`<stop stop-color="${ZP.COLOR_LOW}" offset="0%"/>` +
-					`<stop stop-color="${ZP.COLOR_HIGH}" offset="100%"/>` +
+					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_LOW, ZP.CC_OPACITY_LOW).join(',')})" offset="0%"/>` +
+					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_HIGH, ZP.CC_OPACITY_HIGH).join(',')})" offset="100%"/>` +
 				`</linearGradient>` +
 			`</defs>` +
       `<rect x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#gradient)"/>` +
@@ -338,10 +354,13 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     `</svg>`
 
   _legend.reset = function() {
-    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'opacity' } }))
-    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'selectability' } }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'color', color: _colors }))
+    //_legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity' }))
+    //_legend.dispatchEvent(ZP.legend_action_event({ type: 'color' }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', opacity: _opacities }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'selectability' }))
 
-    let svg = document.getElementById("scale-color-continuous-svg")
+    let svg = _legend.querySelector("#scale-color-continuous-svg")
     let bbox = svg.getBBox();
     let mbox = {
       x: bbox.x - ZP.CC_PATCH_MARGIN,
@@ -355,7 +374,6 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     svg.setAttribute('height', mbox.height)
   }
 
-  this.get_value = x => _values[x]
   this.span   = _span
   this.low    = _low
   this.high   = _high
@@ -670,20 +688,6 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  let _update_color = function() {
-    for (let i in _points) {
-      let a = HUSL.fromHex(_points[i].material.color.getHexString())
-      let b = HUSL.fromHex(_aes.current.color.get_value(i))
-      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){
-          _points[i].material.color = new THREE.Color(HUSL.toHex(this[0], this[1], this[2]))
-        })
-        .start()
-    }
-
-    _aes.reset_color()
-  }
-
   let _update_coord = function() {
     _change_aspect_to(_current_aspect)
     _update_arena()
@@ -750,44 +754,49 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  let _change_points_selectability = function(inds_, selectability_) {
-    if (typeof inds_ === 'string') {
-      switch (inds_) {
-        case 'all':
-          inds_ = _data_indices
-          break
-      }
-    }
-
+  let _change_points_selectability = function(inds_, values_) {
+    let is_array = Array.isArray(values_)
     for (let i of inds_) {
-      _points[i]._selectable = selectability_
+      _points[i]._selectable = is_array ? values_[i] : values_
     }
   }
 
-  let _change_points_opacity = function(inds_, opacity_, animation_) {
-    if (typeof inds_ === 'string') {
-      switch (inds_) {
-        case 'all':
-          inds_ = _data_indices
-          break
+  let _change_points_color = function(inds_, values_, animation_) {
+    let is_array = Array.isArray(values_)
+    for (let i of inds_) {
+      let values = is_array ? values_[i] : values_
+      if (animation_) {
+        let a = ZP.hex_to_rgba(_points[i].material.color.getHexString())
+        let b = ZP.hex_to_rgba(values)
+
+        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){ _points[i].material.color = new THREE.Color(ZP.rgba_to_hex(this)) })
+          .start()
+      } else {
+        _points[i].material.color = new THREE.Color(values)
       }
     }
+  }
 
+  let _change_points_opacity = function(inds_, values_, animation_) {
+    let is_array = Array.isArray(values_)
     for (let i of inds_) {
+      let values = is_array ? values_[i] : values_
       if (animation_) {
         let a = { opacity: _points[i].material.opacity }
-        let b = { opacity: opacity_ }
+        let b = { opacity: values }
         
         ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){ _points[i].material.opacity = this.opacity })
           .start()
       } else {
-        _points[i].material.opacity = opacity_
+        _points[i].material.opacity = values
       }
     }
   }
 
   this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
+    if (options_.title) { document.title = options_.title }
     if (options_.debug) { console.log('data_ = ', data_) }
     if (options_.debug) { console.log('mappings_ = ', mappings_) }
 
@@ -830,7 +839,7 @@ ZP.ZP = function(el_, width_, height_) {
       let datum = _data_rows[i]
       datum['(0-based index)'] = i
 
-      let color = _aes.current.color ? _aes.current.color.get_value(i) : ZP.COLOR_DEFAULT
+      let color = ZP.COLOR_DEFAULT
       let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) })
       let discSprt = new THREE.Sprite(discMtrl)
       discSprt.position.set( y , z , x )
@@ -871,14 +880,20 @@ ZP.ZP = function(el_, width_, height_) {
     _legend_DIV.addEventListener('legend_action', function(e) {
       let d = e.detail
       switch (d.type) {
+        case 'color':
+          if (typeof d.indices === 'undefined') d.indices = _data_indices
+          if (typeof d.color === 'undefined') d.color = ZP.COLOR_DEFAULT
+          if (typeof d.animation === 'undefined') d.animation = true
+          _change_points_color(d.indices, d.color, d.animation)
+          break
         case 'opacity':
-          if (typeof d.indices === 'undefined') d.indices = 'all'
+          if (typeof d.indices === 'undefined') d.indices = _data_indices
           if (typeof d.opacity === 'undefined') d.opacity = 1
           if (typeof d.animation === 'undefined') d.animation = true
           _change_points_opacity(d.indices, d.opacity, d.animation)
           break
         case 'selectability':
-          if (typeof d.indices === 'undefined') d.indices = 'all'
+          if (typeof d.indices === 'undefined') d.indices = _data_indices
           if (typeof d.selectability === 'undefined') d.selectability = true
           _change_points_selectability(d.indices, d.selectability)
           break
@@ -908,12 +923,12 @@ ZP.ZP = function(el_, width_, height_) {
 
     _prev_color_BUTTON.addEventListener('click', function(e) {
       _aes.prev_color()
-      _update_color()
+      _aes.reset_color()
     })
 
     _next_color_BUTTON.addEventListener('click', function(e) {
       _aes.next_color()
-      _update_color()
+      _aes.reset_color()
     })
 
     resetCameraButton.addEventListener('click', function(e) {
