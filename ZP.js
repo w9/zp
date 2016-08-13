@@ -796,7 +796,7 @@ ZP.ZP = function(el_, width_, height_) {
   }
 
   this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
-    if (options_.title) { document.title = options_.title }
+    if (options_.title) { document.title = 'ZP - ' + options_.title }
     if (options_.debug) { console.log('data_ = ', data_) }
     if (options_.debug) { console.log('mappings_ = ', mappings_) }
 
