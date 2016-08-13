@@ -70,6 +70,21 @@ ZP.range0 = function(hi) {
   return a
 }
 
+ZP.pretty_breaks = function(vec_) {
+  
+  x,
+  n           = 5
+  min.n       = n%/%3
+  shrink.sml  = 0.75
+  high.u.bias = 1.5
+  u5.bias     = 0.5 + 1.5 * high.u.bias
+  eps.correct = 0
+
+  let vec = vec_.filter(x => isFinite(x))
+
+  // TODO
+}
+
 /**
  * Unlike htmlwidgets.dataframeToD3, this function does minimal check, but it pads nulls when
  * the arrays are not of the same length.
