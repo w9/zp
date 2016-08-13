@@ -4,8 +4,6 @@
 // TODO: double click should add a label following that dot, using the "label" aes
 // TODO: add "multiple coordinates" functionality (e.g., for PCA and MDS), and maybe multiple **mappings** as well
 // TODO: add **instant type** search functionality, very useful when the dots are overwhelmingly many
-// TODO: use "BufferGeometry" and "PointMaterial" to render points. aspect ratio toggle can be changed accordingly
-// TODO: the "color patches" should be threejs canvas themselves
 // TODO: use pretty scales (1, 2, 5, 10 ticks) used in ggplot2, drawing gray lines is good enough 
 // TODO: should be able to specify a label layer
 // TODO: change the base to something like http://threejs.org/examples/#webgl_geometry_spline_editor, exept it's infinitely large and there's fog
@@ -43,8 +41,8 @@ ZP.NEAR = 0.1
 ZP.FAR = 20000
 ZP.ANIMATION_DURATION = 250
 ZP.FLOOR_MARGIN = 2
-ZP.KEY_COORD_PREV = 'j'
-ZP.KEY_COORD_NEXT = 'k'
+ZP.KEY_COORD_PREV = 'k'
+ZP.KEY_COORD_NEXT = 'j'
 ZP.KEY_COLOR_PREV = 'h'
 ZP.KEY_COLOR_NEXT = 'l'
 ZP.KEY_VIEW_RESET = ' '
@@ -141,7 +139,10 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   let _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_
     _legendItem[l].classList[new_dimmed_ ? 'add' : 'remove']('dimmed')
-    _legend.dispatchEvent(new CustomEvent(new_dimmed_ ? 'dim' : 'light', { bubbles: true, detail: _indices[l] }))
+    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: {
+      type: 'opacity', indices: _indices[l], opacity: new_dimmed_ ? 0.1 : 1 } }))
+    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: {
+      type: 'selectability', indices: _indices[l], selectability: !new_dimmed_ } }))
   }
   
   let _toggleLevel = function(l) {
@@ -262,8 +263,23 @@ ZP.ScaleColorBoolean = function(vec_, name_) {
 
 ZP.ScaleColorNone = function() {
   let _legend = document.createElement('div')
+  _legend.innerHTML = ``
+  _legend.innerHTML += `<div style="text-align: center">opacity</div>`
+  _legend.innerHTML +=
+    `<div>` +
+    `<input id="scn-opacity-slider" type="range" min="0" max="1" step="0.01" value="1"/>` +
+    `</div>`
+
+  let _change_opacity_to = function(opacity_, animation_=true) {
+    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'opacity', opacity: opacity_, animation: animation_} }))
+  }
+
+  let _opacity_slider = _legend.querySelector('#scn-opacity-slider')
+  _opacity_slider.addEventListener('input', e => _change_opacity_to(_opacity_slider.value, false))
+
   _legend.reset = function () {
-    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: 'all' }))
+    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'selectability' } }))
+    _change_opacity_to(_opacity_slider.value)
   }
 
   this.get_value = () => ZP.COLOR_DEFAULT
@@ -314,7 +330,8 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
     `</svg>`
 
   _legend.reset = function() {
-    _legend.dispatchEvent(new CustomEvent('light', { bubbles: true, detail: 'all' }))
+    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'opacity' } }))
+    _legend.dispatchEvent(new CustomEvent('legend_action', { bubbles: true, detail: { type: 'selectability' } }))
 
     let svg = document.getElementById("scale-color-continuous-svg")
     let bbox = svg.getBBox();
@@ -725,30 +742,42 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  let _dim_points = function(inds, dim) {
-    if (typeof inds === 'string') {
-      switch (inds) {
+  let _change_points_selectability = function(inds_, selectability_) {
+    if (typeof inds_ === 'string') {
+      switch (inds_) {
         case 'all':
-          inds = _data_indices
-          break
-
-        default:
+          inds_ = _data_indices
           break
       }
     }
 
-    for (let i of inds) {
-      let a = { opacity: _points[i].material.opacity }
-      let b = { opacity: (dim ? 0.1 : 1) }
-      
-      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){ _points[i].material.opacity = this.opacity })
-        .start()
+    for (let i of inds_) {
+      _points[i]._selectable = selectability_
     }
   }
 
-  let _on_dim = function(e) { _dim_points(e.detail, true) }
-  let _on_light = function(e) { _dim_points(e.detail, false) }
+  let _change_points_opacity = function(inds_, opacity_, animation_) {
+    if (typeof inds_ === 'string') {
+      switch (inds_) {
+        case 'all':
+          inds_ = _data_indices
+          break
+      }
+    }
+
+    for (let i of inds_) {
+      if (animation_) {
+        let a = { opacity: _points[i].material.opacity }
+        let b = { opacity: opacity_ }
+        
+        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){ _points[i].material.opacity = this.opacity })
+          .start()
+      } else {
+        _points[i].material.opacity = opacity_
+      }
+    }
+  }
 
   this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
     if (options_.debug) { console.log('data_ = ', data_) }
@@ -802,6 +831,8 @@ ZP.ZP = function(el_, width_, height_) {
       discSprt.dimmed = false
       _scene.add( discSprt )
 
+      discSprt._selectable = true;
+
       _points.push(discSprt)
     }
 
@@ -829,8 +860,22 @@ ZP.ZP = function(el_, width_, height_) {
 
     _scale_name_DIV.appendChild(_aes.title_DIV)
     _legend_DIV.appendChild(_aes.legend_DIV)
-    _legend_DIV.addEventListener('dim', _on_dim)
-    _legend_DIV.addEventListener('light', _on_light)
+    _legend_DIV.addEventListener('legend_action', function(e) {
+      let d = e.detail
+      switch (d.type) {
+        case 'opacity':
+          if (typeof d.indices === 'undefined') d.indices = 'all'
+          if (typeof d.opacity === 'undefined') d.opacity = 1
+          if (typeof d.animation === 'undefined') d.animation = true
+          _change_points_opacity(d.indices, d.opacity, d.animation)
+          break
+        case 'selectability':
+          if (typeof d.indices === 'undefined') d.indices = 'all'
+          if (typeof d.selectability === 'undefined') d.selectability = true
+          _change_points_selectability(d.indices, d.selectability)
+          break
+      }
+    })
 
     window.addEventListener('keydown', function(e) {
       switch ( e.key ) {
@@ -930,7 +975,7 @@ ZP.ZP = function(el_, width_, height_) {
     })
 
     _renderer.domElement.addEventListener('dblclick', function(e) {
-      let undimmed_points = _points.filter(p => p.material.opacity == 1)
+      let selectable_points = _points.filter(p => p._selectable)
 
       let mouse = new THREE.Vector2(Infinity, Infinity)
       mouse.x = ( e.offsetX / _renderer.domElement.clientWidth ) * 2 - 1
@@ -941,7 +986,7 @@ ZP.ZP = function(el_, width_, height_) {
       } else {
         _raycaster.setFromCamera( mouse, _ortho_camera )
       }
-      let intersects = _raycaster.intersectObjects( undimmed_points )
+      let intersects = _raycaster.intersectObjects( selectable_points )
       if (intersects.length > 0) {
         if (intersects[0].object != _selected_obj) {
           _selected_obj = intersects[0].object

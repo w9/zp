@@ -16,6 +16,6 @@
       { "x":"mds1","y":"mds2","z":"mds3" },
       { "x":"pc1","y":"pc2","z":"pc3" }
     ],
-    "color" : [ "avg_log_exp", "patient" ]
+    "color" : [ "avg_log_exp", null, "patient" ]
   }
 }
