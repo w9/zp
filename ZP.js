@@ -58,8 +58,12 @@ ZP.normalize = function(xs, low=-1, high=1) {
   let min = Math.min.apply(null, xs)
   let max = Math.max.apply(null, xs)
 
-  return xs.map( x => (x - min)/(max - min) )
-           .map( x => low + x * (high - low) )
+  if (min == max) {
+    return xs.map( x => 0 )
+  } else {
+    return xs.map( x => (x - min)/(max - min) )
+             .map( x => low + x * (high - low) )
+  }
 }
 
 ZP.range0 = function(hi) {
@@ -71,17 +75,6 @@ ZP.range0 = function(hi) {
 }
 
 ZP.pretty_breaks = function(vec_) {
-  
-  x,
-  n           = 5
-  min.n       = n%/%3
-  shrink.sml  = 0.75
-  high.u.bias = 1.5
-  u5.bias     = 0.5 + 1.5 * high.u.bias
-  eps.correct = 0
-
-  let vec = vec_.filter(x => isFinite(x))
-
   // TODO
 }
 
