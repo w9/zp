@@ -1,4 +1,4 @@
-var zp = new ZP.ZP(document.body);
+var zp = new ZP.ZP(document.body, window.innerWidth, window.innerHeight);
 
 var _help_panel = document.getElementById('help-panel');
 
@@ -20,10 +20,10 @@ function getJSON(url, callback) {
   xhr.send();
 }
 
-getJSON('example_query.json', function(err, p) {
+getJSON('MGH30_genes.json', function(err, p) {
   if (err != null) {
   } else {
     zp.plot(p.data, p.mappings, p.options);
-    window.addEventListener('resize', zp.resize(window.innerWidth, window.innerHeight));
+    window.addEventListener('resize', e => zp.resize(window.innerWidth, window.innerHeight));
   }
 });

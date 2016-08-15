@@ -1,4 +1,3 @@
-// TODO: make the color changes event-base as well, and change the legends to be more in control of the arena
 // TODO: use pretty scales (1, 2, 5, 10 ticks) for the continuous color scale
 // TODO: deal with nulls in coords
 // TODO: isolate coordinate changes and color changes, and add key shortcuts for each
@@ -27,7 +26,7 @@ ZP.COLOR_PALETTE = [
   '#6699cc' , '#aa4466' , '#4477aa'
 ]
 
-ZP.CC_OPACITY_LOW = 0.5
+ZP.CC_OPACITY_LOW = 0.1
 ZP.CC_OPACITY_HIGH = 1
 ZP.CC_LOW = '#56b1f7'
 ZP.CC_HIGH = '#132b43'
@@ -49,7 +48,7 @@ ZP.KEY_COLOR_PREV = 'h'
 ZP.KEY_COLOR_NEXT = 'l'
 ZP.KEY_VIEW_RESET = ' '
 ZP.KEY_TOGGLE_ORTHO_VIEWS = 'Enter'
-ZP.NULL_DISPLAY_AS = 'none'
+ZP.NULL_DISPLAY_AS = '[none]'
 ZP.CROSSHAIR_SIZE_FACTOR = 2
 
 ZP.DEFAULT_OPTIONS = {
@@ -133,25 +132,30 @@ ZP.colsToRows = function(cols_) {
 }
 
 
+
+ZP.ScaleContinuous = function(vec_, name_) {
+  let _values = ZP.normalize(vec_)
+
+  let _low    = Math.min(...vec_)
+  let _high   = Math.max(...vec_)
+  let _span   = _high - _low
+
+  this.get_value = x => _values[x]
+  this.span   = _span
+  this.low    = _low
+  this.high   = _high
+  this.name   = name_
+}
+
+
+
+
 /**
- * The ultimate purpose of a scale is to map between the data and the aesthetic values in *O(1)* time.
- *
- * The reason we need scales as independent objects is because we need polymorphism, which
- * means that it makes no sense to have them in the first place if they each have different
- * properties (handles).
- *
- * Only the property "values" is guaranteed to be used. Things like "legend" is just something useful provided
- * by the scale (because it conveniently has all the information needed for generating such things).
- * It is completely up to the presenter as to whether, and how to use it. For example, if and where to put the "legend".
- *
- * The way a scale communicates with the presenter is through event firing. This is so that
- * the scale doesn't have to know the existence of a presenter.
- *
- * <ScaleColorDiscrete>
- *                      . values    = [ '#f1f1f1', '#f1a313', ... ]
- *                      . legend    = <div>
+ * { type   : 'factor',
+ *   data   : [ 1, null, 2, 3, ... ],
+ *   levels : [ 'foo', 'bar', 'baz', ... ] }
  */
-ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
+ZP.ScaleColorFactor = function(vec_, name_) {
   let _this = this
 
   let _dimmed = {}
@@ -160,13 +164,7 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   let _indices = {}
   let _legend
 
-  // this array will later be destroyed so don't use reference directly
-  let _palette = (palette_ || ZP.COLOR_PALETTE).slice()
-
-  let _vec = vec_.map(f => f === null ? null : f.toString())
-
-  // sort null last
-  let _levels = Array.from(new Set(_vec)).sort((a, b) => ( a === null ? 1 : b === null ? -1 : a > b ))
+  let _palette = ZP.COLOR_PALETTE.slice()
 
   let _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_
@@ -180,14 +178,14 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   }
 
   let _onlyShowOneLevel = function(l) {
-    for (let level of _levels) {
+    for (let level of vec_.levels) {
       _change_level(level, level != l)
     }
   }
 
   let _toggleAllLevels = function() {
-    let all_dimmed = _levels.every(l => _dimmed[l])
-    _levels.map(l => _change_level(l, !all_dimmed))
+    let all_dimmed = vec_.levels.every(l => _dimmed[l])
+    vec_.levels.map(l => _change_level(l, !all_dimmed))
   }
 
   let _format_legend_text = function(t) {
@@ -202,88 +200,93 @@ ZP.ScaleColorDiscrete = function(vec_, name_, palette_) {
   _legend = document.createElement('div')
   _legend.innerHTML = `<h2>${_format_legend_text(name_)}</h2>`
 
-  let itemContainer = document.createElement('div')
-  itemContainer.id = 'item-container'
-  _legend.appendChild(itemContainer)
+  let item_container_DIV = document.createElement('div')
+  item_container_DIV.id = 'item-container'
+  _legend.appendChild(item_container_DIV)
   _legend.addEventListener('dblclick', function(e){_toggleAllLevels()})
 
-  _levels.map(l => _indices[l] = [])
-  _levels.map(l => _dimmed[l] = false)
-  _vec.map((f, i) => _indices[f].push(i))
+  let _create_legend_item = function(level_, color_) {
+    let item_DIV = document.createElement('div')
+    item_DIV.classList.add('item')
+    item_DIV.innerHTML = `<span class="color-patch" style="background-color: ${color_}"></span>${_format_legend_text(level_)}`
+    item_DIV.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneLevel(level_) : _toggleLevel(level_)})
+    item_DIV.addEventListener('dblclick', function(e){e.stopPropagation()})
+    item_container_DIV.appendChild(item_DIV)
 
-  for (let l of _levels) {
+    return item_DIV
+  }
+
+  vec_.levels.map(l => _dimmed[l] = false)
+  vec_.levels.map(l => _indices[l] = [])
+
+  for (let l of vec_.levels) {
     let color = _palette.shift()
     if (!color) color = ZP.COLOR_DEFAULT
 
-    let item = document.createElement('div')
-    item.classList.add('item')
-    item.innerHTML = `<span class="color-patch" style="background-color: ${color}"></span>${_format_legend_text(l)}`
-    item.addEventListener('click', function(e){e.ctrlKey ? _onlyShowOneLevel(l) : _toggleLevel(l)})
-    item.addEventListener('dblclick', function(e){e.stopPropagation()})
-    itemContainer.appendChild(item)
-
     _color[l] = color
-    _legendItem[l] = item
-    
-    if (l === null) { _change_level(l, true) }
+    _legendItem[l] = _create_legend_item(l, color)
   }
 
+  if (vec_.data.indexOf(null) >= 0) {
+    /**
+     * If there's null in vec_.data:
+     * 
+     *   - augment vec.levels with an extra level "<NULL_DISPLAY_AS>"
+     *   - change all occurences of null in vec_.data to the index of "<NULL_DISPLAY_AS>"
+     *   - dim "<NULL_DISPLAY_AS>"
+     */
+    let l = ZP.NULL_DISPLAY_AS
+    vec_.levels.push(l)
+    vec_.data = vec_.data.map(x => x === null ? vec_.levels.length-1 : x)
+    _dimmed[l] = true
+    _indices[l] = []
+
+    _color[l] = ZP.COLOR_DEFAULT
+    _legendItem[l] = _create_legend_item(l, ZP.COLOR_DEFAULT)
+  }
+
+  vec_.data.map((f, i) => _indices[vec_.levels[f]].push(i))
+
   _legend.reset = function() {
-    for (l of _levels) {
+    for (l of vec_.levels) {
       _legend.dispatchEvent(ZP.legend_action_event({ type: 'color', indices: _indices[l], color: _color[l] }))
       _change_level(l, _dimmed[l])
     }
   }
 
+  this.dimmed = _dimmed
   this.legend = _legend
   this.name = name_
 }
 
 
 
-/**
- * <ScaleContinuous>
- *                  . values    = [ 0.12, -0.23, ... ] # -1~1
- *                  . span      = 45.67
- *                  . low       = -23.34 
- *                  . high      = 23.34
- *                  . name      = 'pc1'
- */
-ZP.ScaleContinuous = function(vec_, name_) {
-  let _values = ZP.normalize(vec_)
+ZP.ScaleColorString = function(vec_, name_) {
+  let _levels = Array.from(new Set(vec_))
+              . filter(a => a !== null)
+              . sort()
 
-  let _low    = Math.min(...vec_)
-  let _high   = Math.max(...vec_)
-  let _span   = _high - _low
+  let _level_to_index = {}
+  _levels.map((l, i) => _level_to_index[l] = i)
 
-  this.get_value = x => _values[x]
-  this.span   = _span
-  this.low    = _low
-  this.high   = _high
-  this.name   = name_
+  let _vec = vec_.map(f => f === null ? null : _level_to_index[f])
 
-  /**
-   * Chromium console test:
-   *
-   * let s = new ZP.ScaleContinuous([0, 1, 10, 1, 2], 'adfaf')
-   *
-   */
+  return new ZP.ScaleColorFactor({ data: _vec, levels: _levels })
 }
 
 
 
-/**
- * Dim "false" data by default
- *
- * <ScaleColorBoolean>
- *                       . values    = [ '#f1f1f1', '#f1a313', ... ]
- *                       . legend    = <div>
- */
 ZP.ScaleColorBoolean = function(vec_, name_) {
-  // TODO
+  let _levels = ['true', 'false']
+  let _vec = vec_.map(b => b ? 0 : 1)
+
+  let _this = new ZP.ScaleColorFactor({ data: _vec, levels: _levels })
+  _this.dimmed['false'] = true;
+
+  return _this
 }
 
-ZP.ScaleColorNone = function() {
+ZP.ScaleColorDensity = function() {
   let _legend = document.createElement('div')
   _legend.innerHTML = ``
   _legend.innerHTML += `<div style="text-align: center">opacity</div>`
@@ -308,14 +311,10 @@ ZP.ScaleColorNone = function() {
   this.legend = _legend
 }
 
-/**
- * Dim "NA" data by default.
- *
- * <ScaleColorContinuous>
- *                       . values    = [ '#f1f1f1', '#f1a313', ... ]
- *                       . legend    = <div>
- */
-ZP.ScaleColorContinuous = function(vec_, name_) {
+
+ZP.ScaleColorNumeric = function(vec_, name_) {
+  let _use_transparency = false
+
   let _norms = ZP.normalize(vec_, 0, 1)
   let _huslLow = ZP.hex_to_rgba(ZP.CC_LOW)
   let _huslHigh = ZP.hex_to_rgba(ZP.CC_HIGH)
@@ -337,31 +336,47 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
 
   // TODO
   let _legend = document.createElement('div')
-  _legend.innerHTML = `<h2>${name_}</h2>`
-  _legend.innerHTML +=
-    `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="scale-color-continuous-svg">` +
+  _legend.innerHTML =
+    `<h2>${name_}</h2>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="cc-svg">` +
 			`<defs>` +
-				`<linearGradient id="gradient" x1="0" y1="1" x2="0" y2="0">` +
-					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_LOW, ZP.CC_OPACITY_LOW).join(',')})" offset="0%"/>` +
+				`<linearGradient id="cc-gradient" x1="0" y1="1" x2="0" y2="0">` +
+					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_LOW, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})" offset="0%"/>` +
 					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_HIGH, ZP.CC_OPACITY_HIGH).join(',')})" offset="100%"/>` +
 				`</linearGradient>` +
 			`</defs>` +
-      `<rect x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#gradient)"/>` +
+      `<rect x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#cc-gradient)"/>` +
       `<line x1="0" y1="0.5" x2="30" y2="0.5" stroke="black"/>` +
       `<line x1="0" y1="${ZP.CC_PATCH_HEIGHT-0.5}" x2="${ZP.CC_PATCH_WIDTH+10}" y2="${ZP.CC_PATCH_HEIGHT-0.5}" stroke="black"/>` +
       `<text x="${30+ZP.CC_PATCH_LABEL_MARGIN}" y="0.5" alignment-baseline="middle" text-anchor="start" font-size="0.8em">${_high}</text>` +
       `<text x="${30+ZP.CC_PATCH_LABEL_MARGIN}" y="${ZP.CC_PATCH_HEIGHT-0.5}" alignment-baseline="middle" text-anchor="start" font-size="0.8em">${_low}</text>` +
-    `</svg>`
+    `</svg>` +
+    `<div>` +
+      `<input type="checkbox" id="cc-transparency-chk" class="filled-in"/>` +
+      `<label for="cc-transparency-chk">Transparency</label>` +
+    `</div>`
+
+  let _svg = _legend.querySelector('#cc-svg')
+  let _gradient = _legend.querySelector('#cc-gradient')
+  let _transparency_CHK = _legend.querySelector('#cc-transparency-chk')
+  _transparency_CHK.addEventListener('change', function(e) {
+    _use_transparency = _transparency_CHK.checked
+    _gradient.children[0].setAttribute('stop-color', `rgba(${ZP.hex_to_rgba(ZP.CC_LOW, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})`)
+    console.log(_gradient)
+    console.log(_gradient.children)
+    _legend.reset()
+  })
 
   _legend.reset = function() {
-    _legend.dispatchEvent(ZP.legend_action_event({ type: 'color', color: _colors }))
-    //_legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity' }))
-    //_legend.dispatchEvent(ZP.legend_action_event({ type: 'color' }))
-    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', opacity: _opacities }))
     _legend.dispatchEvent(ZP.legend_action_event({ type: 'selectability' }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'color', color: _colors }))
+    if (_use_transparency) {
+      _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', opacity: _opacities }))
+    } else {
+      _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity' }))
+    }
 
-    let svg = _legend.querySelector("#scale-color-continuous-svg")
-    let bbox = svg.getBBox();
+    let bbox = _svg.getBBox();
     let mbox = {
       x: bbox.x - ZP.CC_PATCH_MARGIN,
       y: bbox.y - ZP.CC_PATCH_MARGIN,
@@ -369,9 +384,9 @@ ZP.ScaleColorContinuous = function(vec_, name_) {
       height: bbox.height + 2 * ZP.CC_PATCH_MARGIN,
     }
     let viewBox = [mbox.x, mbox.y, mbox.width, mbox.height]
-    svg.setAttribute('viewBox', viewBox.join(' '))
-    svg.setAttribute('width', mbox.width)
-    svg.setAttribute('height', mbox.height)
+    _svg.setAttribute('viewBox', viewBox.join(' '))
+    _svg.setAttribute('width', mbox.width)
+    _svg.setAttribute('height', mbox.height)
   }
 
   this.span   = _span
@@ -411,7 +426,7 @@ ZP.Scales = function(data_, mappings_) {
   
   let _color = []
   if (mappings_.color.length == 0) {
-    _color = [new ZP.ScaleColorNone()]
+    _color = [new ZP.ScaleColorDensity()]
   } else {
     for (let m of mappings_.color) {
       /**
@@ -419,12 +434,14 @@ ZP.Scales = function(data_, mappings_) {
        */
       let ms
       if (m === null) {
-        ms = new ZP.ScaleColorNone()
+        ms = new ZP.ScaleColorDensity()
       } else {
         if (typeof data_[m][0] == 'number') {
-          ms = new ZP.ScaleColorContinuous(data_[m], m)
+          ms = new ZP.ScaleColorNumeric(data_[m], m)
+        } else if (typeof data_[m][0] == 'boolean') {
+          ms = new ZP.ScaleColorBoolean(data_[m], m)
         } else {
-          ms = new ZP.ScaleColorDiscrete(data_[m], m)
+          ms = new ZP.ScaleColorString(data_[m], m)
         }
       }
       
