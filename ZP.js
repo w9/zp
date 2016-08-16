@@ -55,7 +55,8 @@ ZP.CROSSHAIR_SIZE_FACTOR = 2
 ZP.DEFAULT_OPTIONS = {
   debug: false,
   animation: true,
-  dimmed_opacity: 0.1
+  dot_size: 'auto',
+  dimmed_opacity: 'auto'
 }
 
 ZP.normalize = function(xs, low=-1, high=1) {
@@ -584,8 +585,6 @@ ZP.ZP = function(el_, width_, height_) {
   let _disc_txtr = new THREE.Texture(ZP.POINT_ICON)
   _disc_txtr.needsUpdate = true
 
-  let _dot_size
-
   let ar = width_ / height_
   let _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR )
   _camera.position.set( -400, 0, -130 )
@@ -737,7 +736,7 @@ ZP.ZP = function(el_, width_, height_) {
 
 
     // animate the floor
-    let m = _dot_size/2 + ZP.FLOOR_MARGIN
+    let m = options_.dot_size/2 + ZP.FLOOR_MARGIN
     let dims = {
       x: _arena_dims.x + m,
       y: _arena_dims.y + m,
@@ -832,11 +831,13 @@ ZP.ZP = function(el_, width_, height_) {
     if (options_.debug) { console.log('_data_rows = ', _data_rows) }
 
     _data_indices = ZP.range0(_data_rows.length)
-    _dot_size = Math.cbrt(7.5 + 20000 / (_data_indices.length + 20))
+    let l = _data_indices.length
+    if (options_.dot_size == 'auto') options_.dot_size = Math.cbrt(Math.pow(2,3) + Math.pow(10,3) / (l/20 + 1))
+    if (options_.dimmed_opacity == 'auto') options_.dimmed_opacity = Math.cbrt(Math.pow(0.2,3) + Math.pow(0.1,3) / (l/5000 + 1))
 
     _change_aspect_to(ZP.ASPECT.ORIGINAL)
 
-    let m = _dot_size/2 + ZP.FLOOR_MARGIN
+    let m = options_.dot_size/2 + ZP.FLOOR_MARGIN
     let dims = {
       x: _arena_dims.x + m,
       y: _arena_dims.y + m,
@@ -868,7 +869,7 @@ ZP.ZP = function(el_, width_, height_) {
       let discMtrl = new THREE.SpriteMaterial({ map: _disc_txtr, color: new THREE.Color(color) })
       let discSprt = new THREE.Sprite(discMtrl)
       discSprt.position.set( y , z , x )
-      discSprt.scale.set( _dot_size, _dot_size, 1 )
+      discSprt.scale.set( options_.dot_size, options_.dot_size, 1 )
       discSprt.datum = datum
       discSprt.dimmed = false
       _scene.add( discSprt )
@@ -889,9 +890,9 @@ ZP.ZP = function(el_, width_, height_) {
     _crosshairs = new THREE.Sprite( crosshairsMtrl )
     _crosshairs.position.set( Infinity, Infinity, Infinity )
     _crosshairs.visible = false
-    _crosshairs.tweenObj = { size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR }
+    _crosshairs.tweenObj = { size: options_.dot_size * ZP.CROSSHAIR_SIZE_FACTOR }
     _crosshairs.tween = new TWEEN.Tween(_crosshairs.tweenObj)
-    _crosshairs.tween.to({ size: _dot_size * ZP.CROSSHAIR_SIZE_FACTOR * 1.4 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
+    _crosshairs.tween.to({ size: options_.dot_size * ZP.CROSSHAIR_SIZE_FACTOR * 1.4 }, 800).easing(TWEEN.Easing.Sinusoidal.InOut).repeat(Infinity).yoyo(true)
       .onUpdate(function(){ _crosshairs.scale.set(this.size, this.size, 1) })
       .start()
     _scene_overlay.add( _crosshairs )
