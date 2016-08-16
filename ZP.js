@@ -41,7 +41,6 @@ ZP.VIEW_ANGLE = 45
 ZP.ORTHO_SHRINK = 180
 ZP.NEAR = 0.1
 ZP.FAR = 20000
-ZP.ANIMATION_DURATION = 250
 ZP.FLOOR_MARGIN = 2
 ZP.KEY_COORD_PREV = 'k'
 ZP.KEY_COORD_NEXT = 'j'
@@ -56,7 +55,8 @@ ZP.DEFAULT_OPTIONS = {
   debug: false,
   animation: true,
   dot_size: 'auto',
-  dimmed_opacity: 'auto'
+  dimmed_opacity: 'auto',
+  animation_duration = 250
 }
 
 ZP.normalize = function(xs, low=-1, high=1) {
@@ -731,13 +731,13 @@ ZP.ZP = function(el_, width_, height_) {
           z: _aes.current.coord.z.get_value(i) * _arena_dims.z
         }
 
-        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+        ;(new TWEEN.Tween(a)).to(b, options_.animation_duration).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x) })
           .start()
 
         // animate the crosshairs
         if (_points[i] === _selected_obj) {
-          ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          ;(new TWEEN.Tween(a)).to(b, options_.animation_duration).easing(TWEEN.Easing.Exponential.Out)
             .onUpdate(function(){
               _crosshairs.position.set(this.y, this.z, this.x)
             })
@@ -769,7 +769,7 @@ ZP.ZP = function(el_, width_, height_) {
         }
         let b = vs[i]
 
-        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+        ;(new TWEEN.Tween(a)).to(b, options_.animation_duration).easing(TWEEN.Easing.Exponential.Out)
           .onUpdate(function(){
             _floor.geometry.vertices[i].set(this.y, this.z, this.x)
             _floor.geometry.verticesNeedUpdate = true
@@ -794,7 +794,7 @@ ZP.ZP = function(el_, width_, height_) {
           let a = ZP.hex_to_rgba(_points[i].material.color.getHexString())
           let b = ZP.hex_to_rgba(value)
 
-          ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          ;(new TWEEN.Tween(a)).to(b, options_.animation_duration).easing(TWEEN.Easing.Exponential.Out)
             .onUpdate(function(){ _points[i].material.color = new THREE.Color(ZP.rgba_to_hex(this)) })
             .start()
         } else {
@@ -812,7 +812,7 @@ ZP.ZP = function(el_, width_, height_) {
           let a = { opacity: _points[i].material.opacity }
           let b = { opacity: value }
           
-          ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          ;(new TWEEN.Tween(a)).to(b, options_.animation_duration).easing(TWEEN.Easing.Exponential.Out)
             .onUpdate(function(){ _points[i].material.opacity = this.opacity })
             .start()
         } else {
