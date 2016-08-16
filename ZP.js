@@ -56,7 +56,7 @@ ZP.DEFAULT_OPTIONS = {
   animation: true,
   dot_size: 'auto',
   dimmed_opacity: 'auto',
-  animation_duration = 250
+  animation_duration: 250
 }
 
 ZP.normalize = function(xs, low=-1, high=1) {
