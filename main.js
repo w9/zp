@@ -50,11 +50,13 @@ function getJsonFromUrl(hashBased) {
   return result;
 }
 
+var _param = getJsonFromUrl(true)
 
-getJSON('MGH30_genes.json', function(err, p) {
+getJSON(_param.json, function(err, p) {
   if (err != null) {
   } else {
-    zp.plot(p.data, p.mappings, p.options);
-    window.addEventListener('resize', e => zp.resize(window.innerWidth, window.innerHeight));
+    Object.assign(p.options, _param.options)
+    zp.plot(p.data, p.mappings, p.options)
+    window.addEventListener('resize', e => zp.resize(window.innerWidth, window.innerHeight))
   }
 });
