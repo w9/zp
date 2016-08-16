@@ -689,84 +689,6 @@ ZP.ZP = function(el_, width_, height_) {
 
   //--------------------- Helper Functions ----------------------//
 
-  let _change_aspect_to = function(aspect) {
-    if (!aspect || aspect == ZP.ASPECT.EQUAL) {
-      _arena_dims = { x: 100, y: 100, z: 100 }
-    } else if (aspect == ZP.ASPECT.ORIGINAL) {
-      let rx = _aes.current.coord.x.span
-      let ry = _aes.current.coord.y.span
-      let rz = _aes.current.coord.z.span
-      let coef = 300 / (rx + ry + rz)
-      _arena_dims = { x: coef * rx, y: coef * ry, z: coef * rz }
-    }
-  }
-
-  let _update_coord = function() {
-    _change_aspect_to(_current_aspect)
-    _update_arena()
-  }
-
-  let _update_arena = function() {
-    // animate the points
-    for (let i in _points) {
-      let a = {
-        y: _points[i].position.x,
-        z: _points[i].position.y,
-        x: _points[i].position.z
-      }
-      let b = {
-        x: _aes.current.coord.x.get_value(i) * _arena_dims.x,
-        y: _aes.current.coord.y.get_value(i) * _arena_dims.y,
-        z: _aes.current.coord.z.get_value(i) * _arena_dims.z
-      }
-
-      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x) })
-        .start()
-
-      // animate the crosshairs
-      if (_points[i] === _selected_obj) {
-        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-          .onUpdate(function(){
-            _crosshairs.position.set(this.y, this.z, this.x)
-          })
-          .start()
-      }
-    }
-
-
-    // animate the floor
-    let m = options_.dot_size/2 + ZP.FLOOR_MARGIN
-    let dims = {
-      x: _arena_dims.x + m,
-      y: _arena_dims.y + m,
-      z: _arena_dims.z + m
-    }
-    let vs = [
-      { x: - dims.x, y: - dims.y, z: - dims.z },
-      { x: + dims.x, y: - dims.y, z: - dims.z },
-      { x: + dims.x, y: + dims.y, z: - dims.z },
-      { x: - dims.x, y: + dims.y, z: - dims.z },
-      { x: - dims.x, y: - dims.y, z: - dims.z }
-    ]
-
-    for (let i in _floor.geometry.vertices) {
-      let a = {
-        y: _floor.geometry.vertices[i].x,
-        z: _floor.geometry.vertices[i].y,
-        x: _floor.geometry.vertices[i].z
-      }
-      let b = vs[i]
-
-      ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-        .onUpdate(function(){
-          _floor.geometry.vertices[i].set(this.y, this.z, this.x)
-          _floor.geometry.verticesNeedUpdate = true
-        })
-        .start()
-    }
-  }
-
   this.plot = function(data_, mappings_, options_) {
     if (typeof options_ === 'undefined') { 
       options_=ZP.DEFAULT_OPTIONS
@@ -775,6 +697,84 @@ ZP.ZP = function(el_, width_, height_) {
         if (typeof options_[o] === 'undefined') {
           options_[o] = ZP.DEFAULT_OPTIONS[o]
         }
+      }
+    }
+
+    let _change_aspect_to = function(aspect) {
+      if (!aspect || aspect == ZP.ASPECT.EQUAL) {
+        _arena_dims = { x: 100, y: 100, z: 100 }
+      } else if (aspect == ZP.ASPECT.ORIGINAL) {
+        let rx = _aes.current.coord.x.span
+        let ry = _aes.current.coord.y.span
+        let rz = _aes.current.coord.z.span
+        let coef = 300 / (rx + ry + rz)
+        _arena_dims = { x: coef * rx, y: coef * ry, z: coef * rz }
+      }
+    }
+
+    let _update_coord = function() {
+      _change_aspect_to(_current_aspect)
+      _update_arena()
+    }
+
+    let _update_arena = function() {
+      // animate the points
+      for (let i in _points) {
+        let a = {
+          y: _points[i].position.x,
+          z: _points[i].position.y,
+          x: _points[i].position.z
+        }
+        let b = {
+          x: _aes.current.coord.x.get_value(i) * _arena_dims.x,
+          y: _aes.current.coord.y.get_value(i) * _arena_dims.y,
+          z: _aes.current.coord.z.get_value(i) * _arena_dims.z
+        }
+
+        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){ _points[i].position.set(this.y, this.z, this.x) })
+          .start()
+
+        // animate the crosshairs
+        if (_points[i] === _selected_obj) {
+          ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+            .onUpdate(function(){
+              _crosshairs.position.set(this.y, this.z, this.x)
+            })
+            .start()
+        }
+      }
+
+
+      // animate the floor
+      let m = options_.dot_size/2 + ZP.FLOOR_MARGIN
+      let dims = {
+        x: _arena_dims.x + m,
+        y: _arena_dims.y + m,
+        z: _arena_dims.z + m
+      }
+      let vs = [
+        { x: - dims.x, y: - dims.y, z: - dims.z },
+        { x: + dims.x, y: - dims.y, z: - dims.z },
+        { x: + dims.x, y: + dims.y, z: - dims.z },
+        { x: - dims.x, y: + dims.y, z: - dims.z },
+        { x: - dims.x, y: - dims.y, z: - dims.z }
+      ]
+
+      for (let i in _floor.geometry.vertices) {
+        let a = {
+          y: _floor.geometry.vertices[i].x,
+          z: _floor.geometry.vertices[i].y,
+          x: _floor.geometry.vertices[i].z
+        }
+        let b = vs[i]
+
+        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+          .onUpdate(function(){
+            _floor.geometry.vertices[i].set(this.y, this.z, this.x)
+            _floor.geometry.verticesNeedUpdate = true
+          })
+          .start()
       }
     }
 
