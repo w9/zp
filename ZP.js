@@ -412,12 +412,12 @@ ZP.Scales = function(data_, mappings_) {
   let _coord = []
   for (let m of mappings_.coord) {
     /**
-     * m = { x: "col1", y: "col2", z: "col3" }
+     * m = ["col1", "col2", "col3"]
      */
     let ms = {}
-    ms.x = new ZP.ScaleContinuous(data_[m.x], m.x)
-    ms.y = new ZP.ScaleContinuous(data_[m.y], m.y)
-    ms.z = new ZP.ScaleContinuous(data_[m.z], m.z)
+    ms.x = new ZP.ScaleContinuous(data_[m[0]], m[0])
+    ms.y = new ZP.ScaleContinuous(data_[m[1]], m[1])
+    ms.z = new ZP.ScaleContinuous(data_[m[2]], m[2])
     
     _coord.push(ms)
   }
@@ -833,7 +833,7 @@ ZP.ZP = function(el_, width_, height_) {
     _data_indices = ZP.range0(_data_rows.length)
     let l = _data_indices.length
     if (options_.dot_size == 'auto') options_.dot_size = Math.cbrt(Math.pow(2,3) + Math.pow(10,3) / (l/20 + 1))
-    if (options_.dimmed_opacity == 'auto') options_.dimmed_opacity = Math.cbrt(Math.pow(0.2,3) + Math.pow(0.1,3) / (l/5000 + 1))
+    if (options_.dimmed_opacity == 'auto') options_.dimmed_opacity = Math.cbrt(Math.pow(0.01,3) + Math.pow(0.1,3) / (l/5000 + 1))
 
     _change_aspect_to(ZP.ASPECT.ORIGINAL)
 
@@ -910,8 +910,6 @@ ZP.ZP = function(el_, width_, height_) {
           if (typeof d.indices === 'undefined') d.indices = _data_indices
           if (typeof d.color === 'undefined') d.color = ZP.COLOR_DEFAULT
           if (typeof d.animation === 'undefined') d.animation = options_.animation
-          console.log(options_)
-          console.log(options_.animation)
           _change_points_color(d.indices, d.color, d.animation)
           break
         case 'opacity':
