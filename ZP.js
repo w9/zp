@@ -155,7 +155,7 @@ ZP.ScaleContinuous = function(vec_, name_) {
  *   data   : [ 1, null, 2, 3, ... ],
  *   levels : [ 'foo', 'bar', 'baz', ... ] }
  */
-ZP.ScaleColorFactor = function(vec_, name_) {
+ZP.ScaleColorFactor = function(vec_, name_, palette_=ZP.COLOR_PALETTE) {
   let _this = this
 
   let _dimmed = {}
@@ -164,12 +164,12 @@ ZP.ScaleColorFactor = function(vec_, name_) {
   let _indices = {}
   let _legend
 
-  let _palette = ZP.COLOR_PALETTE.slice()
+  let _palette = palette_.slice()
 
   let _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_
     _legendItem[l].classList[new_dimmed_ ? 'add' : 'remove']('dimmed')
-    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', indices: _indices[l], opacity: new_dimmed_ ? 0.1 : 1 }))
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', indices: _indices[l], opacity: new_dimmed_ ? 'dim' : 1 }))
     _legend.dispatchEvent(ZP.legend_action_event({ type: 'selectability', indices: _indices[l], selectability: !new_dimmed_ }))
   }
   
@@ -271,7 +271,7 @@ ZP.ScaleColorString = function(vec_, name_) {
 
   let _vec = vec_.map(f => f === null ? null : _level_to_index[f])
 
-  return new ZP.ScaleColorFactor({ data: _vec, levels: _levels })
+  return new ZP.ScaleColorFactor({ data: _vec, levels: _levels }, name_)
 }
 
 
@@ -280,7 +280,7 @@ ZP.ScaleColorBoolean = function(vec_, name_) {
   let _levels = ['true', 'false']
   let _vec = vec_.map(b => b ? 0 : 1)
 
-  let _this = new ZP.ScaleColorFactor({ data: _vec, levels: _levels })
+  let _this = new ZP.ScaleColorFactor({ data: _vec, levels: _levels }, name_, ['#ff0000', '#0077ff'])
   _this.dimmed['false'] = true;
 
   return _this
@@ -362,8 +362,6 @@ ZP.ScaleColorNumeric = function(vec_, name_) {
   _transparency_CHK.addEventListener('change', function(e) {
     _use_transparency = _transparency_CHK.checked
     _gradient.children[0].setAttribute('stop-color', `rgba(${ZP.hex_to_rgba(ZP.CC_LOW, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})`)
-    console.log(_gradient)
-    console.log(_gradient.children)
     _legend.reset()
   })
 
@@ -771,48 +769,49 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  let _change_points_selectability = function(inds_, values_) {
-    let is_array = Array.isArray(values_)
-    for (let i of inds_) {
-      _points[i]._selectable = is_array ? values_[i] : values_
-    }
-  }
-
-  let _change_points_color = function(inds_, values_, animation_) {
-    let is_array = Array.isArray(values_)
-    for (let i of inds_) {
-      let values = is_array ? values_[i] : values_
-      if (animation_) {
-        let a = ZP.hex_to_rgba(_points[i].material.color.getHexString())
-        let b = ZP.hex_to_rgba(values)
-
-        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-          .onUpdate(function(){ _points[i].material.color = new THREE.Color(ZP.rgba_to_hex(this)) })
-          .start()
-      } else {
-        _points[i].material.color = new THREE.Color(values)
-      }
-    }
-  }
-
-  let _change_points_opacity = function(inds_, values_, animation_) {
-    let is_array = Array.isArray(values_)
-    for (let i of inds_) {
-      let values = is_array ? values_[i] : values_
-      if (animation_) {
-        let a = { opacity: _points[i].material.opacity }
-        let b = { opacity: values }
-        
-        ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
-          .onUpdate(function(){ _points[i].material.opacity = this.opacity })
-          .start()
-      } else {
-        _points[i].material.opacity = values
-      }
-    }
-  }
-
   this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
+
+    let _change_points_selectability = function(inds_, values_) {
+      let is_array = Array.isArray(values_)
+      for (let i of inds_) {
+        _points[i]._selectable = is_array ? values_[i] : values_
+      }
+    }
+
+    let _change_points_color = function(inds_, values_, animation_) {
+      let is_array = Array.isArray(values_)
+      for (let i of inds_) {
+        let value = is_array ? values_[i] : values_
+        if (animation_) {
+          let a = ZP.hex_to_rgba(_points[i].material.color.getHexString())
+          let b = ZP.hex_to_rgba(value)
+
+          ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+            .onUpdate(function(){ _points[i].material.color = new THREE.Color(ZP.rgba_to_hex(this)) })
+            .start()
+        } else {
+          _points[i].material.color = new THREE.Color(value)
+        }
+      }
+    }
+
+    let _change_points_opacity = function(inds_, values_, animation_) {
+      let is_array = Array.isArray(values_)
+      for (let i of inds_) {
+        let value = is_array ? values_[i] : values_
+        if (value === 'dim') value = options_.dimmed_opacity
+        if (animation_) {
+          let a = { opacity: _points[i].material.opacity }
+          let b = { opacity: value }
+          
+          ;(new TWEEN.Tween(a)).to(b, ZP.ANIMATION_DURATION).easing(TWEEN.Easing.Exponential.Out)
+            .onUpdate(function(){ _points[i].material.opacity = this.opacity })
+            .start()
+        } else {
+          _points[i].material.opacity = value
+        }
+      }
+    }
     if (options_.title) { document.title = 'ZP - ' + options_.title }
     if (options_.debug) { console.log('data_ = ', data_) }
     if (options_.debug) { console.log('mappings_ = ', mappings_) }
@@ -900,13 +899,15 @@ ZP.ZP = function(el_, width_, height_) {
         case 'color':
           if (typeof d.indices === 'undefined') d.indices = _data_indices
           if (typeof d.color === 'undefined') d.color = ZP.COLOR_DEFAULT
-          if (typeof d.animation === 'undefined') d.animation = true
+          if (typeof d.animation === 'undefined') d.animation = options_.animation
+          console.log(options_)
+          console.log(options_.animation)
           _change_points_color(d.indices, d.color, d.animation)
           break
         case 'opacity':
           if (typeof d.indices === 'undefined') d.indices = _data_indices
           if (typeof d.opacity === 'undefined') d.opacity = 1
-          if (typeof d.animation === 'undefined') d.animation = true
+          if (typeof d.animation === 'undefined') d.animation = options_.animation
           _change_points_opacity(d.indices, d.opacity, d.animation)
           break
         case 'selectability':
