@@ -52,7 +52,9 @@ ZP.NULL_DISPLAY_AS = '[none]'
 ZP.CROSSHAIR_SIZE_FACTOR = 2
 
 ZP.DEFAULT_OPTIONS = {
-  debug: false
+  debug: false,
+  animation: true,
+  dimmed_opacity: 0.1
 }
 
 ZP.normalize = function(xs, low=-1, high=1) {
@@ -769,7 +771,17 @@ ZP.ZP = function(el_, width_, height_) {
     }
   }
 
-  this.plot = function(data_, mappings_, options_=ZP.DEFAULT_OPTIONS) {
+  this.plot = function(data_, mappings_, options_) {
+    if (typeof options_ === 'undefined') { 
+      options_=ZP.DEFAULT_OPTIONS
+    } else {
+      for (o in ZP.DEFAULT_OPTIONS) {
+        if (typeof options_[o] === 'undefined') {
+          options_[o] = ZP.DEFAULT_OPTIONS[o]
+        }
+      }
+    }
+
 
     let _change_points_selectability = function(inds_, values_) {
       let is_array = Array.isArray(values_)
