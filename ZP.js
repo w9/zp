@@ -1,3 +1,4 @@
+// TODO: figure out the appropriate dimmed opacity from the number of points
 // TODO: use pretty scales (1, 2, 5, 10 ticks) for the continuous color scale
 // TODO: deal with nulls in coords
 // TODO: isolate coordinate changes and color changes, and add key shortcuts for each
@@ -347,22 +348,18 @@ ZP.ScaleColorNumeric = function(vec_, name_) {
 					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_HIGH, ZP.CC_OPACITY_HIGH).join(',')})" offset="100%"/>` +
 				`</linearGradient>` +
 			`</defs>` +
-      `<rect x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#cc-gradient)"/>` +
+      `<rect id="cc-gradient-strip" x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#cc-gradient)"/>` +
       `<line x1="0" y1="0.5" x2="30" y2="0.5" stroke="black"/>` +
       `<line x1="0" y1="${ZP.CC_PATCH_HEIGHT-0.5}" x2="${ZP.CC_PATCH_WIDTH+10}" y2="${ZP.CC_PATCH_HEIGHT-0.5}" stroke="black"/>` +
       `<text x="${30+ZP.CC_PATCH_LABEL_MARGIN}" y="0.5" alignment-baseline="middle" text-anchor="start" font-size="0.8em">${_high}</text>` +
       `<text x="${30+ZP.CC_PATCH_LABEL_MARGIN}" y="${ZP.CC_PATCH_HEIGHT-0.5}" alignment-baseline="middle" text-anchor="start" font-size="0.8em">${_low}</text>` +
-    `</svg>` +
-    `<div>` +
-      `<input type="checkbox" id="cc-transparency-chk" class="filled-in"/>` +
-      `<label for="cc-transparency-chk">Transparency</label>` +
-    `</div>`
+    `</svg>`
 
   let _svg = _legend.querySelector('#cc-svg')
   let _gradient = _legend.querySelector('#cc-gradient')
-  let _transparency_CHK = _legend.querySelector('#cc-transparency-chk')
-  _transparency_CHK.addEventListener('change', function(e) {
-    _use_transparency = _transparency_CHK.checked
+  let _gradient_strip_RECT = _legend.querySelector('#cc-gradient-strip')
+  _gradient_strip_RECT.addEventListener('click', function(e) {
+    _use_transparency = !_use_transparency
     _gradient.children[0].setAttribute('stop-color', `rgba(${ZP.hex_to_rgba(ZP.CC_LOW, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})`)
     _legend.reset()
   })
