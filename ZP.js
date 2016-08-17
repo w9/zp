@@ -299,8 +299,8 @@ ZP.ScaleColorDensity = function() {
     `<input id="scn-opacity-slider" type="range" min="0" max="1" step="0.01" value="1"/>` +
     `</div>`
 
-  let _change_opacity_to = function(opacity_, animation_=true) {
-    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', opacity: opacity_, animation: animation_ }))
+  let _change_opacity_to = function(opacity_) {
+    _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', opacity: opacity_ }))
   }
 
   let _opacity_slider = _legend.querySelector('#scn-opacity-slider')
