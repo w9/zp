@@ -1,3 +1,4 @@
+// TODO: change the default behavior of dblclicking the legend title to be *undim* all groups
 // TODO: figure out the appropriate dimmed opacity from the number of points
 // TODO: use pretty scales (1, 2, 5, 10 ticks) for the continuous color scale
 // TODO: deal with nulls in coords
