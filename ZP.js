@@ -30,8 +30,6 @@ ZP.COLOR_PALETTE = [
 
 ZP.CC_OPACITY_LOW = 0.1
 ZP.CC_OPACITY_HIGH = 1
-ZP.CC_LOW = '#56b1f7'
-ZP.CC_HIGH = '#132b43'
 
 ZP.CC_PATCH_WIDTH = 20
 ZP.CC_PATCH_HEIGHT = 130
@@ -57,7 +55,12 @@ ZP.DEFAULT_OPTIONS = {
   animation: true,
   dot_size: 'auto',
   dimmed_opacity: 'auto',
-  animation_duration: 250
+  animation_duration: 250,
+  cc_low: '#56b1f7',
+  cc_high: '#132b43',
+  camera_x: '-400',
+  camera_y: '0',
+  camera_z: '-130'
 }
 
 ZP.normalize = function(xs, low=-1, high=1) {
@@ -317,12 +320,12 @@ ZP.ScaleColorDensity = function() {
 }
 
 
-ZP.ScaleColorNumeric = function(vec_, name_) {
+ZP.ScaleColorNumeric = function(vec_, name_, options_) {
   let _use_transparency = false
 
   let _norms = ZP.normalize(vec_, 0, 1)
-  let _huslLow = ZP.hex_to_rgba(ZP.CC_LOW)
-  let _huslHigh = ZP.hex_to_rgba(ZP.CC_HIGH)
+  let _huslLow = ZP.hex_to_rgba(options_.cc_low)
+  let _huslHigh = ZP.hex_to_rgba(options_.cc_high)
 
   let _colors = []
   for (let x of _norms) {
@@ -346,8 +349,8 @@ ZP.ScaleColorNumeric = function(vec_, name_) {
     `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="cc-svg">` +
 			`<defs>` +
 				`<linearGradient id="cc-gradient" x1="0" y1="1" x2="0" y2="0">` +
-					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_LOW, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})" offset="0%"/>` +
-					`<stop stop-color="rgba(${ZP.hex_to_rgba(ZP.CC_HIGH, ZP.CC_OPACITY_HIGH).join(',')})" offset="100%"/>` +
+					`<stop stop-color="rgba(${ZP.hex_to_rgba(options_.cc_low, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})" offset="0%"/>` +
+					`<stop stop-color="rgba(${ZP.hex_to_rgba(options_.cc_high, ZP.CC_OPACITY_HIGH).join(',')})" offset="100%"/>` +
 				`</linearGradient>` +
 			`</defs>` +
       `<rect id="cc-gradient-strip" x="0" y="0" width="${ZP.CC_PATCH_WIDTH}" height="${ZP.CC_PATCH_HEIGHT}" fill="url(#cc-gradient)"/>` +
@@ -362,7 +365,7 @@ ZP.ScaleColorNumeric = function(vec_, name_) {
   let _gradient_strip_RECT = _legend.querySelector('#cc-gradient-strip')
   _gradient_strip_RECT.addEventListener('click', function(e) {
     _use_transparency = !_use_transparency
-    _gradient.children[0].setAttribute('stop-color', `rgba(${ZP.hex_to_rgba(ZP.CC_LOW, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})`)
+    _gradient.children[0].setAttribute('stop-color', `rgba(${ZP.hex_to_rgba(options_.cc_low, _use_transparency ? ZP.CC_OPACITY_LOW : 1).join(',')})`)
     _legend.reset()
   })
 
@@ -409,7 +412,7 @@ ZP.ScaleColorNumeric = function(vec_, name_) {
  *                      { x: <scale>, y: <scale>, z: <scale>} ]
  *          . color . [ <scale>, <scale> ]
  */
-ZP.Scales = function(data_, mappings_) {
+ZP.Scales = function(data_, mappings_, options_) {
   let _coord = []
   for (let m of mappings_.coord) {
     /**
@@ -436,7 +439,7 @@ ZP.Scales = function(data_, mappings_) {
         ms = new ZP.ScaleColorDensity()
       } else {
         if (typeof data_[m][0] == 'number') {
-          ms = new ZP.ScaleColorNumeric(data_[m], m)
+          ms = new ZP.ScaleColorNumeric(data_[m], m, options_)
         } else if (typeof data_[m][0] == 'boolean') {
           ms = new ZP.ScaleColorBoolean(data_[m], m)
         } else {
@@ -465,8 +468,8 @@ ZP.Scales = function(data_, mappings_) {
  *
  */
 
-ZP.Aes = function(data_, mappings_) {
-  let _scales = new ZP.Scales(data_, mappings_)
+ZP.Aes = function(data_, mappings_, options_) {
+  let _scales = new ZP.Scales(data_, mappings_, options_)
   
   let _current = { coord: _scales.coord[0], color: _scales.color[0] }
 
@@ -588,7 +591,6 @@ ZP.ZP = function(el_, width_, height_) {
 
   let ar = width_ / height_
   let _camera = new THREE.PerspectiveCamera( ZP.VIEW_ANGLE, ar, ZP.NEAR, ZP.FAR )
-  _camera.position.set( -400, 0, -130 )
 
   let s = ZP.ORTHO_SHRINK
   let _ortho_camera = new THREE.OrthographicCamera( ar * -s, ar * s, s, -s, ZP.NEAR, ZP.FAR )
@@ -700,6 +702,9 @@ ZP.ZP = function(el_, width_, height_) {
         }
       }
     }
+
+    _camera.position.set(options_.camera_x, options_.camera_y, options_.camera_z)
+    if (options_.debug) { console.log('_camera = ', _camera) }
 
     let _change_aspect_to = function(aspect) {
       if (!aspect || aspect == ZP.ASPECT.EQUAL) {
@@ -825,7 +830,7 @@ ZP.ZP = function(el_, width_, height_) {
     if (options_.debug) { console.log('data_ = ', data_) }
     if (options_.debug) { console.log('mappings_ = ', mappings_) }
 
-    _aes = new ZP.Aes(data_, mappings_)
+    _aes = new ZP.Aes(data_, mappings_, options_)
     if (options_.debug) { console.log('_aes = ', _aes) }
 
     _data_rows = ZP.colsToRows(data_)

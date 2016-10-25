@@ -9,7 +9,7 @@
   },
   "mappings": {
     "coord": [
-      { "x": "tsne1", "y": "tsne2", "z": "tsne3" }
+      ["tsne1", "tsne2", "tsne3"]
     ],
     "color": ["pathway", "avg_log_exp"]
   },

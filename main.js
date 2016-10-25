@@ -56,7 +56,9 @@ getJSON(_param.json, function(err, p) {
   if (err != null) {
   } else {
     _param.json = undefined
-    Object.assign(p.options, _param)
+    if (p.options) {
+      Object.assign(p.options, _param)
+    }
     zp.plot(p.data, p.mappings, p.options)
     window.addEventListener('resize', e => zp.resize(window.innerWidth, window.innerHeight))
   }
