@@ -180,7 +180,7 @@ ZP.ScaleColorFactor = function(vec_, name_, palette_=ZP.COLOR_PALETTE) {
     _legend.dispatchEvent(ZP.legend_action_event({ type: 'opacity', indices: _indices[l], opacity: new_dimmed_ ? 'dim' : 1 }))
     _legend.dispatchEvent(ZP.legend_action_event({ type: 'selectability', indices: _indices[l], selectability: !new_dimmed_ }))
   }
-  
+
   let _toggleLevel = function(l) {
     _change_level(l, !_dimmed[l])
   }
@@ -238,7 +238,7 @@ ZP.ScaleColorFactor = function(vec_, name_, palette_=ZP.COLOR_PALETTE) {
   if (vec_.data.indexOf(null) >= 0) {
     /**
      * If there's null in vec_.data:
-     * 
+     *
      *   - augment vec.levels with an extra level "<NULL_DISPLAY_AS>"
      *   - change all occurences of null in vec_.data to the index of "<NULL_DISPLAY_AS>"
      *   - dim "<NULL_DISPLAY_AS>"
@@ -407,7 +407,7 @@ ZP.ScaleColorNumeric = function(vec_, name_, options_) {
  *                       { x: 'mds1' , y: 'mds2' , z: 'mds3' } ]
  *           . color = [ 'group', 'expr' ]
  *
- * 
+ *
  * <Scales> . coord . [ { x: <scale>, y: <scale>, z: <scale>},
  *                      { x: <scale>, y: <scale>, z: <scale>} ]
  *          . color . [ <scale>, <scale> ]
@@ -422,10 +422,10 @@ ZP.Scales = function(data_, mappings_, options_) {
     ms.x = new ZP.ScaleContinuous(data_[m[0]], m[0])
     ms.y = new ZP.ScaleContinuous(data_[m[1]], m[1])
     ms.z = new ZP.ScaleContinuous(data_[m[2]], m[2])
-    
+
     _coord.push(ms)
   }
-  
+
   let _color = []
   if (mappings_.color.length == 0) {
     _color = [new ZP.ScaleColorDensity()]
@@ -446,11 +446,11 @@ ZP.Scales = function(data_, mappings_, options_) {
           ms = new ZP.ScaleColorString(data_[m], m)
         }
       }
-      
+
       _color.push(ms)
     }
   }
-  
+
   this.coord = _coord
   this.color = _color
 }
@@ -459,7 +459,7 @@ ZP.Scales = function(data_, mappings_, options_) {
  * <Aes>
  *       . current . coord = { x: <scale>, y: <scale>, z: <scale> }
  *                 . color = <scale>
- * 
+ *
  *       . next_coord()
  *       . prev_coord()
  *
@@ -470,7 +470,7 @@ ZP.Scales = function(data_, mappings_, options_) {
 
 ZP.Aes = function(data_, mappings_, options_) {
   let _scales = new ZP.Scales(data_, mappings_, options_)
-  
+
   let _current = { coord: _scales.coord[0], color: _scales.color[0] }
 
   let _coord_i = 0
@@ -606,20 +606,8 @@ ZP.ZP = function(el_, width_, height_) {
   _renderer.setClearColor(0xffffff, 1)
   _renderer.autoClear = false
 
-  let _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0))
-  _orbit.addEventListener('userRotate', function(e){_ortho = 'none'})
-  _orbit.enableDamping = true
-  _orbit.dampingFactor = 0.4
-  _orbit.update()
-
-  let _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0))
-  _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'})
-  _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT }
-  _ortho_orbit.enabled = false
-  _ortho_orbit.enableRotate = false
-  _ortho_orbit.enableDamping = true
-  _ortho_orbit.dampingFactor = 0.4
-  _ortho_orbit.update()
+  let _orbit
+  let _ortho_orbit
 
   let _container_DIV = document.createElement('div')
   _container_DIV.id = 'plot-container'
@@ -693,7 +681,7 @@ ZP.ZP = function(el_, width_, height_) {
   //--------------------- Helper Functions ----------------------//
 
   this.plot = function(data_, mappings_, options_) {
-    if (typeof options_ === 'undefined') { 
+    if (typeof options_ === 'undefined') {
       options_=ZP.DEFAULT_OPTIONS
     } else {
       for (o in ZP.DEFAULT_OPTIONS) {
@@ -705,6 +693,21 @@ ZP.ZP = function(el_, width_, height_) {
 
     _camera.position.set(options_.camera_x, options_.camera_y, options_.camera_z)
     if (options_.debug) { console.log('_camera = ', _camera) }
+
+    _orbit = new THREE.OrbitControls( _camera, _renderer.domElement, new THREE.Vector3(0,0,0))
+    _orbit.addEventListener('userRotate', function(e){_ortho = 'none'})
+    _orbit.enableDamping = true
+    _orbit.dampingFactor = 0.4
+    _orbit.update()
+
+    _ortho_orbit = new THREE.OrbitControls( _ortho_camera, _renderer.domElement, new THREE.Vector3(0,0,0))
+    _ortho_orbit.addEventListener('userRotate', function(e){_ortho = 'none'})
+    _ortho_orbit.mouseButtons = { ORBIT: null, ZOOM: THREE.MOUSE.MIDDLE, PAN: THREE.MOUSE.LEFT }
+    _ortho_orbit.enabled = false
+    _ortho_orbit.enableRotate = false
+    _ortho_orbit.enableDamping = true
+    _ortho_orbit.dampingFactor = 0.4
+    _ortho_orbit.update()
 
     let _change_aspect_to = function(aspect) {
       if (!aspect || aspect == ZP.ASPECT.EQUAL) {
@@ -817,7 +820,7 @@ ZP.ZP = function(el_, width_, height_) {
         if (animation_) {
           let a = { opacity: _points[i].material.opacity }
           let b = { opacity: value }
-          
+
           ;(new TWEEN.Tween(a)).to(b, options_.animation_duration).easing(TWEEN.Easing.Exponential.Out)
             .onUpdate(function(){ _points[i].material.opacity = this.opacity })
             .start()
@@ -942,7 +945,7 @@ ZP.ZP = function(el_, width_, height_) {
         case ZP.KEY_TOGGLE_ORTHO_VIEWS: toggleOrthoButton.dispatchEvent(new Event('click')); break
       }
     })
-    
+
     _prev_coord_BUTTON.addEventListener('click', function(e) {
       _aes.prev_coord()
       _update_coord()
