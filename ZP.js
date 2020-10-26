@@ -172,8 +172,6 @@ ZP.ScaleColorFactor = function(vec_, name_, palette_=ZP.COLOR_PALETTE) {
   let _indices = {}
   let _legend
 
-  let _palette = palette_.slice()
-
   let _change_level = function(l, new_dimmed_) {
     _dimmed[l] = new_dimmed_
     _legendItem[l].classList[new_dimmed_ ? 'add' : 'remove']('dimmed')
@@ -227,12 +225,23 @@ ZP.ScaleColorFactor = function(vec_, name_, palette_=ZP.COLOR_PALETTE) {
   vec_.levels.map(l => _dimmed[l] = false)
   vec_.levels.map(l => _indices[l] = [])
 
-  for (let l of vec_.levels) {
-    let color = _palette.shift()
-    if (!color) color = ZP.COLOR_DEFAULT
+  if (Array.isArray(palette_)) {
+    let _palette = palette_.slice()
+    for (let l of vec_.levels) {
+      let color = _palette.shift()
+      if (!color) color = ZP.COLOR_DEFAULT
 
-    _color[l] = color
-    _legendItem[l] = _create_legend_item(l, color)
+      _color[l] = color
+      _legendItem[l] = _create_legend_item(l, color)
+    }
+  } else {
+    // _palette is a map {l: color}
+    for (let l of vec_.levels) {
+      let color = _color[l] = palette_[l]
+      if (!color) color = ZP.COLOR_DEFAULT
+
+      _legendItem[l] = _create_legend_item(l, color)
+    }
   }
 
   if (vec_.data.indexOf(null) >= 0) {
@@ -269,7 +278,8 @@ ZP.ScaleColorFactor = function(vec_, name_, palette_=ZP.COLOR_PALETTE) {
 
 
 
-ZP.ScaleColorString = function(vec_, name_) {
+ZP.ScaleColorString = function(vec_, name_, palette_) {
+  // NOTE: it's okay if palette_ is not supplied. The value of "undefined" will be passed to ScaleColorFactor
   let _levels = Array.from(new Set(vec_))
               . filter(a => a !== null)
               . sort()
@@ -277,9 +287,10 @@ ZP.ScaleColorString = function(vec_, name_) {
   let _level_to_index = {}
   _levels.map((l, i) => _level_to_index[l] = i)
 
+  console.log(vec_)
   let _vec = vec_.map(f => f === null ? null : _level_to_index[f])
 
-  return new ZP.ScaleColorFactor({ data: _vec, levels: _levels }, name_)
+  return new ZP.ScaleColorFactor({ data: _vec, levels: _levels }, name_, palette_)
 }
 
 
@@ -437,7 +448,7 @@ ZP.Scales = function(data_, mappings_, options_) {
       let ms
       if (m === null) {
         ms = new ZP.ScaleColorDensity()
-      } else {
+      } else if (typeof m === 'string') {
         if (typeof data_[m][0] == 'number') {
           ms = new ZP.ScaleColorNumeric(data_[m], m, options_)
         } else if (typeof data_[m][0] == 'boolean') {
@@ -445,6 +456,11 @@ ZP.Scales = function(data_, mappings_, options_) {
         } else {
           ms = new ZP.ScaleColorString(data_[m], m)
         }
+      } else if (Array.isArray(m)) {
+        console.log(m)
+        ms = new ZP.ScaleColorString(data_[m[0]], m[0], m[1])
+      } else {
+        throw `type of m = ${typeof m} is unrecognized`
       }
 
       _color.push(ms)
