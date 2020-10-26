@@ -1,0 +1,12 @@
+#help-panel {
+  font-size: 1.5em;
+  font-family: mono;
+  border: solid;
+  padding: 20px 40px;
+  background-color: rgba(255, 255, 255, 0.95);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 999;
+}
