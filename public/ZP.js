@@ -476,15 +476,14 @@ ZP.Aes = function(data_, mappings_, options_) {
   let _coord_i = 0
   let _num_coords = _scales.coord.length
 
-  let _title_DIV = document.createElement('div')
-  _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
+  let _title = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
 
   let _prev_coord = function() {
     _coord_i += _num_coords - 1
     _coord_i %= _num_coords
     _current.coord = _scales.coord[_coord_i]
 
-    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
+    _title = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
   }
 
   let _next_coord = function() {
@@ -492,7 +491,7 @@ ZP.Aes = function(data_, mappings_, options_) {
     _coord_i %= _num_coords
     _current.coord = _scales.coord[_coord_i]
 
-    _title_DIV.innerText = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
+    _title = Object.keys(_current.coord).map(x => _current.coord[x].name).join(', ')
   }
 
   let _legend_DIV = document.createElement('div')
@@ -529,7 +528,7 @@ ZP.Aes = function(data_, mappings_, options_) {
   this.prev_color = _prev_color
   this.next_color = _next_color
   this.legend_DIV = _legend_DIV
-  this.title_DIV = _title_DIV
+  this.title = _title
   this.reset_color = _reset_color
 }
 
@@ -568,7 +567,16 @@ ZP.OldAes = function(attrs_) {
 
 
 
-ZP.ZP = function(el_, width_, height_) {
+ZP.ZP = function(el_, width_, height_,
+                 {
+                   on_title_change_,
+                   on_datum_meta_change_,
+                   on_legend_change_,
+                 } = {
+                   on_title_change_: ()=>{},
+                   on_datum_meta_change_: ()=>{},
+                   on_legend_change_: ()=>{},
+                 }) {
   let _aes
 
   let _data_rows
@@ -606,77 +614,12 @@ ZP.ZP = function(el_, width_, height_) {
   _renderer.setClearColor(0xffffff, 1)
   _renderer.autoClear = false
 
+  el_.appendChild(_renderer.domElement)
+
   let _orbit
   let _ortho_orbit
 
-  let _container_DIV = document.createElement('div')
-  _container_DIV.id = 'plot-container'
-  _container_DIV.appendChild( _renderer.domElement )
-  el_.appendChild(_container_DIV)
-
-  let _scale_name_DIV = document.createElement('div')
-  _scale_name_DIV.id = 'scale-name'
-  el_.appendChild(_scale_name_DIV)
-
-  let _legend_DIV = document.createElement('div')
-  _legend_DIV.id = 'legend'
-  el_.appendChild(_legend_DIV)
-
-  let overlayDom = document.createElement('div')
-  overlayDom.id = 'overlay'
-  el_.appendChild(overlayDom)
-
-  let toolbarDom = document.createElement('div')
-  toolbarDom.id = 'toolbar'
-  overlayDom.appendChild(toolbarDom)
-
-  let _prev_coord_BUTTON = document.createElement('i')
-  _prev_coord_BUTTON.innerText = 'undo'
-  _prev_coord_BUTTON.title = 'previous coord'
-  _prev_coord_BUTTON.classList.add('material-icons')
-  toolbarDom.appendChild(_prev_coord_BUTTON)
-
-  let _next_coord_BUTTON = document.createElement('i')
-  _next_coord_BUTTON.innerText = 'redo'
-  _next_coord_BUTTON.title = 'next coord'
-  _next_coord_BUTTON.classList.add('material-icons')
-  toolbarDom.appendChild(_next_coord_BUTTON)
-
-  let _prev_color_BUTTON = document.createElement('i')
-  _prev_color_BUTTON.innerText = 'arrow_back'
-  _prev_color_BUTTON.title = 'previous color'
-  _prev_color_BUTTON.classList.add('material-icons')
-  toolbarDom.appendChild(_prev_color_BUTTON)
-
-  let _next_color_BUTTON = document.createElement('i')
-  _next_color_BUTTON.innerText = 'arrow_forward'
-  _next_color_BUTTON.title = 'next color'
-  _next_color_BUTTON.classList.add('material-icons')
-  toolbarDom.appendChild(_next_color_BUTTON)
-
-  let resetCameraButton = document.createElement('i')
-  resetCameraButton.innerText = 'youtube_searched_for'
-  resetCameraButton.title = 'reset camera angle'
-  resetCameraButton.classList.add('material-icons')
-  toolbarDom.appendChild(resetCameraButton)
-
-  let toggleAspectButton = document.createElement('i')
-  toggleAspectButton.innerText = 'aspect_ratio'
-  toggleAspectButton.title = 'toggle aspect ratio between 1:1:1 and original'
-  toggleAspectButton.classList.add('material-icons')
-  toolbarDom.appendChild(toggleAspectButton)
-
-  let toggleOrthoButton = document.createElement('i')
-  toggleOrthoButton.innerText = 'call_merge'
-  toggleOrthoButton.title = 'toggle between orthographic and perspective camera'
-  toggleOrthoButton.classList.add('material-icons')
-  toolbarDom.appendChild(toggleOrthoButton)
-
-  let datumDisplay = document.createElement('div')
-  overlayDom.appendChild(datumDisplay)
-
   let _raycaster = new THREE.Raycaster()
-
 
   //--------------------- Helper Functions ----------------------//
 
@@ -910,71 +853,38 @@ ZP.ZP = function(el_, width_, height_) {
 
     //---------------------- configure UI ---------------------//
 
-    _scale_name_DIV.appendChild(_aes.title_DIV)
-    _legend_DIV.appendChild(_aes.legend_DIV)
-    _legend_DIV.addEventListener('legend_action', function(e) {
-      let d = e.detail
-      switch (d.type) {
-        case 'color':
-          if (typeof d.indices === 'undefined') d.indices = _data_indices
-          if (typeof d.color === 'undefined') d.color = ZP.COLOR_DEFAULT
-          if (typeof d.animation === 'undefined') d.animation = options_.animation
-          _change_points_color(d.indices, d.color, d.animation)
-          break
-        case 'opacity':
-          if (typeof d.indices === 'undefined') d.indices = _data_indices
-          if (typeof d.opacity === 'undefined') d.opacity = 1
-          if (typeof d.animation === 'undefined') d.animation = options_.animation
-          _change_points_opacity(d.indices, d.opacity, d.animation)
-          break
-        case 'selectability':
-          if (typeof d.indices === 'undefined') d.indices = _data_indices
-          if (typeof d.selectability === 'undefined') d.selectability = true
-          _change_points_selectability(d.indices, d.selectability)
-          break
-      }
-    })
+    on_title_change_(_aes.title)
+    on_legend_change_(_aes.legend_DIV)
 
-    window.addEventListener('keydown', function(e) {
-      switch ( e.key ) {
-        case ZP.KEY_COORD_PREV: _prev_coord_BUTTON.dispatchEvent(new Event('click')); break
-        case ZP.KEY_COORD_NEXT: _next_coord_BUTTON.dispatchEvent(new Event('click')); break
-        case ZP.KEY_COLOR_PREV: _prev_color_BUTTON.dispatchEvent(new Event('click')); break
-        case ZP.KEY_COLOR_NEXT: _next_color_BUTTON.dispatchEvent(new Event('click')); break
-        case ZP.KEY_VIEW_RESET: resetCameraButton.dispatchEvent(new Event('click')); break
-        case ZP.KEY_TOGGLE_ORTHO_VIEWS: toggleOrthoButton.dispatchEvent(new Event('click')); break
-      }
-    })
-
-    _prev_coord_BUTTON.addEventListener('click', function(e) {
+    this.prev_coord = function() {
       _aes.prev_coord()
       _update_coord()
-    })
+    }
 
-    _next_coord_BUTTON.addEventListener('click', function(e) {
+    this.next_coord = function() {
       _aes.next_coord()
       _update_coord()
-    })
+    }
 
-    _prev_color_BUTTON.addEventListener('click', function(e) {
+    this.prev_color = function() {
       _aes.prev_color()
       _aes.reset_color()
-    })
+    }
 
-    _next_color_BUTTON.addEventListener('click', function(e) {
+    this.next_color = function() {
       _aes.next_color()
       _aes.reset_color()
-    })
+    }
 
-    resetCameraButton.addEventListener('click', function(e) {
+    this.resetCamera = function() {
       _ortho = 'none'
       _ortho_orbit.enabled = false
       _orbit.enabled = true
 
       _orbit.moveToOriginal()
-    })
+    }
 
-    toggleAspectButton.addEventListener('click', function(e) {
+    this.toggleAspect = function() {
       if (_current_aspect == ZP.ASPECT.EQUAL) {
         _change_aspect_to(ZP.ASPECT.ORIGINAL)
         toggleAspectButton.classList.remove('activated')
@@ -985,9 +895,9 @@ ZP.ZP = function(el_, width_, height_) {
         _current_aspect = ZP.ASPECT.EQUAL
       }
       _update_arena()
-    })
+    }
 
-    toggleOrthoButton.addEventListener('click', function(e) {
+    this.toggleOrtho = function() {
       if (_ortho == 'none') {
         _ortho_camera.position.set( 0, 1000, 0 )
         _ortho_camera.up.set( 1, 0, 0 )
@@ -1030,7 +940,7 @@ ZP.ZP = function(el_, width_, height_) {
         _ortho_orbit.enabled = false
         _orbit.enabled = true
       }
-    })
+    }
 
     _renderer.domElement.addEventListener('dblclick', function(e) {
       let selectable_points = _points.filter(p => p._selectable)
@@ -1052,13 +962,13 @@ ZP.ZP = function(el_, width_, height_) {
           for (let prop in _selected_obj.datum) {
             outputs.push(prop + ' = ' + _selected_obj.datum[prop])
           }
-          datumDisplay.innerText = outputs.join('\n')
+          on_datum_meta_change_(outputs.join('\n'))
           _crosshairs.position.copy(_selected_obj.position)
           _crosshairs.visible = true
         }
       } else {
         _selected_obj = null
-        datumDisplay.innerText = ''
+        on_datum_meta_change_('')
         _crosshairs.visible = false
       }
     })
