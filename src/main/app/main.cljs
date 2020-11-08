@@ -1,11 +1,16 @@
+;; TODO: NEXT: load a json and show it verbatim on the screen
+
 (ns app.main
   (:require
    ["react" :as react]
    ["react-dom" :as react-dom]
-   [com.fulcrologic.fulcro.dom :as dom]
+   [com.fulcrologic.fulcro.dom :as dom :refer [div i]]
+   [goog.Uri :as uri]
+   [goog.format :as format]
    [clojure.string :as str]))
 
-(def test-data
+
+(def ^js test-data
   (clj->js {"data"     {"avg_log_exp" [0.9639 1.0483 0.7468 0.6396 0.4754 1.5452 1.6167 0.5952 1.0576 1.0403]
                         "gene"        ["CCNL2" "MRPL20" "GNB1" "RPL22" "CAMTA1" "PARK7" "ENO1" "UBE4B" "KIF1B" "PGD"]
                         "pathway"     [nil "ribosome" nil nil nil nil nil nil nil nil]
@@ -19,30 +24,29 @@
 
 (defn root
   []
-  (dom/div :#plot-container
-           (dom/div :#renderer-dom-element)
-           (dom/div :#overlay
-                    (dom/div :#toolbar
-                             (dom/i :.material-icons {:title "previous coord"} "undo")
-                             (dom/i :.material-icons {:title "next coord"} "redo")
-                             (dom/i :.material-icons {:title "previous color"} "arrow_back")
-                             (dom/i :.material-icons {:title "next color"} "arrow_forward")
-                             (dom/i :.material-icons {:title "reset camera angle"} "youtube_searched_for")
-                             (dom/i :.material-icons {:title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
-                             (dom/i :.material-icons {:title "toggle between orthographic and perspective camera"} "call_merge")
-                             )
-                    (dom/div :#datum-meta)
-                    )
-           (dom/div :#scale-name))
+  (div :#plot-container
+       (div :#renderer-dom-element)
+       (div :#overlay
+            (div :#toolbar
+                 (i :.material-icons {:title "previous coord"} "undo")
+                 (i :.material-icons {:title "next coord"} "redo")
+                 (i :.material-icons {:title "previous color"} "arrow_back")
+                 (i :.material-icons {:title "next color"} "arrow_forward")
+                 (i :.material-icons {:title "reset camera angle"} "youtube_searched_for")
+                 (i :.material-icons {:title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
+                 (i :.material-icons {:title "toggle between orthographic and perspective camera"} "call_merge")
+                 )
+            (div :#datum-meta))
+       (div :#scale-name))
   ;; (react/createElement "div" nil "hello world")
   )
 
 (defn init!
   []
-  ;; (js/console.log js/location.href)
-  ;; (let [href js/location.href
-  ;;       x    (str/index-of href \?)]
-  ;;   (js/console.log (subs href x)))
+  (let [href js/location.href
+        x    ^js (uri/parse href)]
+    (js/console.log (.getParameterValue x "json"))
+    (js/console.log (.getParameterValue x "jsonn")))
 
   (let [
         root-el     (js/document.getElementById "root")
