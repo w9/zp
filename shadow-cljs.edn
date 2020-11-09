@@ -4,7 +4,8 @@
  {:main {:target     :browser
          :output-dir "public/js"
          :asset-path "/js"
-         :modules    {:main {:init-fn app.main/init!}}}}
+         :modules    {:main {:init-fn app.main/init!}}
+         :devtools   {:after-load app.main/refresh!}}}
 
  :dev-http {3000 "public"}
  }

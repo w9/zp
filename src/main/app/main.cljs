@@ -1,62 +1,108 @@
 ;; TODO: NEXT: load a json and show it verbatim on the screen
 
 (ns app.main
+  (:refer-clojure :exclude [Box])
   (:require
    ["react" :as react]
    ["react-dom" :as react-dom]
-   [com.fulcrologic.fulcro.dom :as dom :refer [div i]]
-   [goog.Uri :as uri]
-   [goog.format :as format]
+   [helix.core :refer [defnc $]]
+   [helix.hooks :as hooks]
+   [helix.dom :as d]
+   [clojure.core.async :as async :refer [go <! >!]]
+   [goog.Uri :as guri]
+   [goog.format :as gformat]
+   [goog.net.XhrIo :as gxhrio]
+   ["react-three-fiber" :as r3]
    [clojure.string :as str]))
 
-
-(def ^js test-data
-  (clj->js {"data"     {"avg_log_exp" [0.9639 1.0483 0.7468 0.6396 0.4754 1.5452 1.6167 0.5952 1.0576 1.0403]
-                        "gene"        ["CCNL2" "MRPL20" "GNB1" "RPL22" "CAMTA1" "PARK7" "ENO1" "UBE4B" "KIF1B" "PGD"]
-                        "pathway"     [nil "ribosome" nil nil nil nil nil nil nil nil]
-                        "tsne1"       [-1.5605 -2.4195 6.8363 -31.2578 -17.7063 -17.9218 -14.1088 16.0979 8.8398 10.4589]
-                        "tsne2"       [-3.3797 -1.9856 -9.6096 8.3487 12.2769 10.0354 7.8908 -10.6043 -11.3531 5.2662]
-                        "tsne3"       [10.8744 -4.6542 -15.8324 0.951 3.4605 -2.2884 -3.8157 8.0973 6.4229 3.7634]}
-            "mappings" {"color" ["pathway" "avg_log_exp"]
-                        "coord" [["tsne1" "tsne2" "tsne3"]]}
-            "options"  {"title" "MGH30 Genes"}})
+(def test-data
+  ^js (clj->js {"data"     {"avg_log_exp" [0.9639 1.0483 0.7468 0.6396 0.4754 1.5452 1.6167 0.5952 1.0576 1.0403]
+                            "gene"        ["CCNL2" "MRPL20" "GNB1" "RPL22" "CAMTA1" "PARK7" "ENO1" "UBE4B" "KIF1B" "PGD"]
+                            "pathway"     [nil "ribosome" nil nil nil nil nil nil nil nil]
+                            "tsne1"       [-1.5605 -2.4195 6.8363 -31.2578 -17.7063 -17.9218 -14.1088 16.0979 8.8398 10.4589]
+                            "tsne2"       [-3.3797 -1.9856 -9.6096 8.3487 12.2769 10.0354 7.8908 -10.6043 -11.3531 5.2662]
+                            "tsne3"       [10.8744 -4.6542 -15.8324 0.951 3.4605 -2.2884 -3.8157 8.0973 6.4229 3.7634]}
+                "mappings" {"color" ["pathway" "avg_log_exp"]
+                            "coord" [["tsne1" "tsne2" "tsne3"]]}
+                "options"  {"title" "MGH30 Genes"}})
   )
 
-(defn root
+(defnc Box
+  [{:keys [position] :as props}]
+  (let [mesh                 (react/useRef)
+        [hovered setHovered] (react/useState false)
+        [active setActive]   (react/useState false)]
+    (r3/useFrame (fn []
+                   (let [r (-> mesh .-current .-rotation)]
+                     (set! (.-x r) (+ 0.01 (.-x r)))
+                     (set! (.-y r) (+ 0.01 (.-y r))))))
+    ($ "mesh" {:ref           mesh
+               :position      position
+               :scale         (if active #js[1.5 1.5 1.5] #js[1 1 1])
+               :onClick       (fn [e] (setActive (not active)))
+               :onPointerOver (fn [e] (setHovered true))
+               :onPointerOut  (fn [e] (setHovered false))}
+       ($ "boxBufferGeometry" {:args #js [1 1 1]})
+       ($ "meshStandardMaterial" {:color (if hovered "hotpink" "orange")}))
+    ))
+
+(defnc root
   []
-  (div :#plot-container
-       (div :#renderer-dom-element)
-       (div :#overlay
-            (div :#toolbar
-                 (i :.material-icons {:title "previous coord"} "undo")
-                 (i :.material-icons {:title "next coord"} "redo")
-                 (i :.material-icons {:title "previous color"} "arrow_back")
-                 (i :.material-icons {:title "next color"} "arrow_forward")
-                 (i :.material-icons {:title "reset camera angle"} "youtube_searched_for")
-                 (i :.material-icons {:title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
-                 (i :.material-icons {:title "toggle between orthographic and perspective camera"} "call_merge")
-                 )
-            (div :#datum-meta))
-       (div :#scale-name))
-  ;; (react/createElement "div" nil "hello world")
-  )
+  (d/div {:id "plot-container"}
+         ($ r3/Canvas
+            ($ "ambientLight" {:intensity 0.5})
+            ($ "spotLight" {:position #js [10 10 10]
+                            :angle    0.15
+                            :penumbra 1})
+            ($ "pointLight" {:position #js [-10 -10 -10]})
+            ($ Box {:position #js [-1.2 0 0]})
+            ($ Box {:position #js [1.2 0 0]})
+            )
+         (d/div {:id "overlay"}
+                (d/div {:id "toolbar"}
+                       (d/i {:class "material-icons" :title "previous coord"} "undo")
+                       (d/i {:class "material-icons" :title "next coord"} "redo")
+                       (d/i {:class "material-icons" :title "previous color"} "arrow_back")
+                       (d/i {:class "material-icons" :title "next color"} "arrow_forward")
+                       (d/i {:class "material-icons" :title "reset camera angle"} "youtube_searched_for")
+                       (d/i {:class "material-icons" :title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
+                       (d/i {:class "material-icons" :title "toggle between orthographic and perspective camera"} "call_merge"))
+                (d/div {:id "datum-meta"}))
+         (d/div {:id "scale-name"})))
 
-(defn init!
+(defn fetch-ch
+  [^js url]
+  (let [ch (async/chan)]
+    (gxhrio/send url (fn [e]
+                       (async/put! ch ^js (.getResponseJson (.-target e)))
+                       (async/close! ch)))
+    ch))
+
+(defn get-json-url
   []
-  (let [href js/location.href
-        x    ^js (uri/parse href)]
-    (js/console.log (.getParameterValue x "json"))
-    (js/console.log (.getParameterValue x "jsonn")))
+  (let [href js/location.href]
+    ^js (.getParameterValue (guri/parse href) "json")))
 
-  (let [
-        root-el     (js/document.getElementById "root")
-        old-root-el (js/document.getElementById "old-root")]
-    (let [zp (js/ZP.ZP. old-root-el 640 480)]
-      (js/console.log (.-plot zp))
-      (js/console.log (.plot zp (.-data test-data) (.-mappings test-data) (.-options test-data))))
-    (react-dom/render (root) root-el)
-    )
-  )
+(defn render-zp
+  [old-root-el ^js json-input]
+  (let [zp (js/ZP.ZP. old-root-el 1024 768)]
+    (js/console.log (.-plot zp))
+    (js/console.log (.plot zp (.-data json-input) (.-mappings json-input) (.-options json-input)))))
+
+(defn ^:export refresh!
+  []
+  (let [root-el (js/document.getElementById "root")]
+    (react-dom/render ($ root) root-el)))
+
+(defn ^:export init!
+  []
+  (go
+    (let [json-url    (get-json-url)
+          json-input  (<! (fetch-ch json-url))
+          root-el     (js/document.getElementById "root")
+          old-root-el (js/document.getElementById "old-root")]
+      ;; (render-zp old-root-el json-input)
+      (react-dom/render ($ root) root-el))))
 
 ;; let toolbarDom = document.createElement('div')
 ;; toolbarDom.id = 'toolbar'

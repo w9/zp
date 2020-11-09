@@ -1,3 +1,9 @@
+html, body, #root, #plot-container {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
 #help-panel {
   font-size: 1.5em;
   font-family: mono;
