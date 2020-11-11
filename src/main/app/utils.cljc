@@ -71,4 +71,23 @@
   (is (= (extrema [0 -1 0 10 0])
          [-1 10]))
   (is (thrown? js/Error (extrema [])
-         [nil nil])))
+               [nil nil])))
+
+(defn cols-to-rows
+  [cols]
+  (let [lengths    (for [[k v] cols] (count v))
+        min-length (apply min lengths)]
+    (vec (for [i (range min-length)]
+           (map-vals cols #(nth % i))))))
+
+(def test-data
+  ^js (clj->js {"data"     {"avg_log_exp" [0.9639 1.0483 0.7468 0.6396 0.4754 1.5452 1.6167 0.5952 1.0576 1.0403]
+                            "gene"        ["CCNL2" "MRPL20" "GNB1" "RPL22" "CAMTA1" "PARK7" "ENO1" "UBE4B" "KIF1B" "PGD"]
+                            "pathway"     [nil "ribosome" nil nil nil nil nil nil nil nil]
+                            "tsne1"       [-1.5605 -2.4195 6.8363 -31.2578 -17.7063 -17.9218 -14.1088 16.0979 8.8398 10.4589]
+                            "tsne2"       [-3.3797 -1.9856 -9.6096 8.3487 12.2769 10.0354 7.8908 -10.6043 -11.3531 5.2662]
+                            "tsne3"       [10.8744 -4.6542 -15.8324 0.951 3.4605 -2.2884 -3.8157 8.0973 6.4229 3.7634]}
+                "mappings" {"color" ["pathway" "avg_log_exp"]
+                            "coord" [["tsne1" "tsne2" "tsne3"]]}
+                "options"  {"title" "MGH30 Genes"}})
+  )

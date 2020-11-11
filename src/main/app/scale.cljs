@@ -8,61 +8,9 @@
   ["#1f77b4" "#ff7f0e" "#2ca02c" "#d62728" "#9467bd"
    "#8c564b" "#e377c2" "#7f7f7f" "#bcbd22" "#17becf"])
 
-(defn apply-scale
-  "Apply scale to a vector `xs` according to a scale-spec `s`, outputing another vector.
 
-  This ia pure function on `xs` and `s`. All global plotting parameters should
-  already been factored into `s`.
-  "
-  [s xs]
-  (match s
-
-         {:type    [:map :color]
-          :missing missing
-          :domain  d
-          :range   r}
-         (let [m       (zipmap d r)
-               fetch-x (fn [x] (get m x missing))]
-           (mapv fetch-x xs))
-
-         {:type   [:linear _]
-          :domain [d0 d1]
-          :range  [r0 r1]}
-         (let [get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
-               get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
-           (mapv (fn [x] (-> x get-ratio get-y)) xs))
-
-         :else (throw (ex-info "unknown scale-spec" {:scale-spec s}))
-         )
-  )
-
-(deftest test-apply-scale
-  (is (=
-       (let [xs ["apple" "apple" "orange" "banana" "apple"]]
-         (apply-scale (color-map categorical-10 xs) xs))
-       ["#1f77b4" "#1f77b4" "#2ca02c" "#ff7f0e" "#1f77b4"]))
-  (is (=
-       (let [xs [1 2 3 10 11]]
-         (apply-scale (x-linear xs) xs))
-       [-1 -0.8 -0.6 0.8 1]))
-  (is (=
-       (let [xs [1 2 3 10 11]]
-         (apply-scale (x-linear xs {:range [0 1]}) xs))
-       [0 0.1 0.2 0.9 1])))
-
-(comment
-
-  ;; applied spec saves some computational efforts, and is designed to be
-  ;; enough for drawing the legend
-  (let [applied-spec (apply-spec spec plot-params vec)]
-    (scale applied-spec vec)
-    (legend applied-spec)               ;note `vec` is conspicuously missing
-    )
-  )
-
-
-(defn x-linear
-  ([xs] (x-linear xs {}))
+(defn axis-linear
+  ([xs] (axis-linear xs {}))
   ([xs
     {:keys [range]
      :or   {range [-1 1]}
@@ -102,219 +50,276 @@
       :range   (vec (take n colors_))}
      )))
 
+(defn apply-scale
+  "Apply scale to a vector `xs` according to a scale-spec `s`, outputing another vector.
+
+  This ia pure function on `xs` and `s`. All global plotting parameters should
+  already been factored into `s`.
+  "
+  [s xs]
+  (match s
+
+         {:type    [:map :color]
+          :missing missing
+          :domain  d
+          :range   r}
+         (let [m       (zipmap d r)
+               fetch-x (fn [x] (get m x missing))]
+           (mapv fetch-x xs))
+
+         {:type   [:linear _]
+          :domain [d0 d1]
+          :range  [r0 r1]}
+         (let [get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
+               get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
+           (mapv (fn [x] (-> x get-ratio get-y)) xs))
+
+         :else (throw (ex-info "unknown scale-spec" {:scale-spec s}))
+         )
+  )
+
+(deftest test-apply-scale
+  (is (=
+       (let [xs ["apple" "apple" "orange" "banana" "apple"]]
+         (apply-scale (color-map categorical-10 xs) xs))
+       ["#1f77b4" "#1f77b4" "#2ca02c" "#ff7f0e" "#1f77b4"]))
+  (is (=
+       (let [xs [1 2 3 10 11]]
+         (apply-scale (axis-linear xs) xs))
+       [-1 -0.8 -0.6 0.8 1]))
+  (is (=
+       (let [xs [1 2 3 10 11]]
+         (apply-scale (axis-linear xs {:range [0 1]}) xs))
+       [0 0.1 0.2 0.9 1])))
+
 (comment
-  ;; usage
-  (let [xs (vec (map str (range 30)))]
-    (color-map categorical-10 xs)
-    )
+  (let [data (utils/cols-to-rows (js->clj (.-data utils/test-data)))
 
-  (let [xs (vec (map str (range 30)))]
-    (color-map categorical-10 xs {:cycle-colors? true})
-    )
+        id-getter #(get % "gene")
+        x-getter  #(get % "tsne1")
+        y-getter  #(get % "tsne2")
+        z-getter  #(get % "tsne3")
+        c-getter  #(get % "avg_log_exp")
 
-  (tupelo.core/zip*)
+        x-scale-spec (axis-linear (map x-getter data))
+        y-scale-spec (axis-linear (map y-getter data))
+        z-scale-spec (axis-linear (map z-getter data))
+        c-scale-spec (color-map categorical-10 (map z-getter data))]
+    (for [datum data]
+      {:key (id-getter datum)
+
+       :y (apply-scale y-scale-spec (y-getter datum))
+       :z (apply-scale z-scale-spec (z-getter datum))
+       :c (apply-scale c-scale-spec (c-getter datum))}))
 
   )
 
+;; (comment
+;;   ;; applied spec saves some computational efforts, and is designed to be
+;;   ;; enough for drawing the legend
+;;   (let [applied-spec (apply-spec spec plot-params vec)]
+;;     (scale applied-spec vec)
+;;     (legend applied-spec)               ;note `vec` is conspicuously missing
+;;     )
+;;   )
 
-;; applied-spec
-{:type    [:color :map]
- :default "#000000"
- :items   [["apple" "#cb94d"]
-           ["orange" "#f4a15f"]
-           ["banana" "#a4aa2b"]]}
+;; (comment
+;;   ;; usage
+;;   (let [xs (vec (map str (range 30)))]
+;;     (color-map categorical-10 xs)
+;;     )
 
-;; transpec
-{:type       [:x :map]
- :candidates categorical-10
- }
+;;   (let [xs (vec (map str (range 30)))]
+;;     (color-map categorical-10 xs {:cycle-colors? true})
+;;     )
 
-;; applied-spec
-{:type  [:x :map]
- :items [["apple" -1]
-         ["orange" 0]
-         ["banana" 1]]}
+;;   (tupelo.core/zip*)
 
-;; spec
-{:type [:x :continous]}
-
-;; applied-spec
-{:type   [:x :continous]
- :domain [-73 42]
- :range  [-1 1]}
-
-(= plot-params
-   {:x {:range [-1 1]}
-    :y {:range [-1 1]}
-    :z {:range [-1 1]}
-    })
+;;   )
 
 
-(comment
-  (cols-to-rows (js->clj (.-data test-data)))
+;; ;; applied-spec
+;; {:type    [:color :map]
+;;  :default "#000000"
+;;  :items   [["apple" "#cb94d"]
+;;            ["orange" "#f4a15f"]
+;;            ["banana" "#a4aa2b"]]}
 
-  (d/div {}
+;; ;; transpec
+;; {:type       [:x :map]
+;;  :candidates categorical-10
+;;  }
 
-         )
+;; ;; applied-spec
+;; {:type  [:x :map]
+;;  :items [["apple" -1]
+;;          ["orange" 0]
+;;          ["banana" 1]]}
 
-  {:interpolation :linear
-   :domain        [-83 142]
-   :range         [(->hsl 0.2 0.7 0.1) (->hsl 0.1 1.0 0.1)]}
+;; ;; spec
+;; {:type [:x :continous]}
 
-  (= c-scale
-     {:interpolation :none
-      :domain        ["apple" "orange" "banana"]
-      :range         ["#f00" "#ff0" "#fff"]})
+;; ;; applied-spec
+;; {:type   [:x :continous]
+;;  :domain [-73 42]
+;;  :range  [-1 1]}
 
-  (= x-scale
-     {:interpolation :linear
-      :domain        [-83 142]
-      :range         [-1 1]})
-
-  {:type [:color :manual]
-   :map  {"apple"  "1f77b4"
-          "orange" "ff7f0e"
-          "banana" "2ca02c"}}
-
-  (= categorical-10
-     ["1f77b4" "ff7f0e" "2ca02c" "d62728" "9467bd"
-      "8c564b" "e377c2" "7f7f7f" "bcbd22" "17becf"]
-     )
-
-  ;; Reactive plotting is a list of scaling piplines that turns information in
-  ;; the data into various aesthetics.
-  ;;
-  ;;                           these are either a transformer or a mapper
-  ;;                                              ↓
-  ;;            ┌──🮤x-extractor🮥── x-vals ──🮤linear-scaler🮥── x-screen-coordinates ──┐
-  ;;     data ──┼──🮤y-extractor🮥── y-vals ──🮤linear-scaler🮥── y-screen-coordinates ──┼──🭬 element
-  ;;            ├──🮤z-extractor🮥── z-vals ──🮤linear-scaler🮥── z-screen-coordinates ──┤
-  ;;            │                                                                    │
-  ;;            └──🮤c-extractor🮥── c-vals ──🮤manual-mapper🮥── colors ────────────────┘
-  ;;
-  ;;   transformer = a function that turns a numeric/character/logical/categorical vector into aes values
-  ;;
-  ;; If we don't concern ourselves with legend-drawing, then both the extractors and
-  ;; the transformers can be simple functions.
-  ;;
-  ;; However, if we represent the transformer as a function in the host
-  ;; language, (as it is usually done,) it is typically very difficult for us to
-  ;; automatically draw legends using it. The reason we would want to auto-draw
-  ;; legends using a transformer, is that the job of a transformer typically
-  ;; requires it computing all the things necessary for drawing a legend. For
-  ;; example, in order to map a numerical vector into the x-axis, the
-  ;; transformer would have to figure out the extrema of the vector. Well,
-  ;; drawing the legend would have to require computing the extrema as well!
-  ;;
-  ;;
-  ;; We focus on a special case, i.e.,
-  ;;
-  ;;   1. The data is a dataframe, implying that the extractors are trivial column accessions
-  ;;   2. The data is a dataframe
-  ;;
-  ;; A _dataframe_ is abstractly defined as a list of maps, with all the maps in
-  ;; the list having the same set of keys. A representation of a dataframe that
-  ;; is literally a list of maps is said to be in the _rows-format_. A dataframe
-  ;; could also be in the _columns-format_. This is when it is represented as a
-  ;; map of lists, with all the lists in the map having the same length. The two
-  ;; representations could be easily converted back and forth, with the
-  ;; column-format being more compact.
-
-  ;; A _transpec_ (short for transformation specification) is a value
-  ;; that specifies how to define a data transformation process. For example,
-  ;; a linear scale would map a numerical vector into another numerical vector
-  ;; following a linear formula that has some parameters. A transpec captures
-  ;; all the parameters that are _orthogonal_ to the vector to be transformed,
-  ;; as well as the plot parameters.
-  ;;
-  ;; For example, when plotting we need to map a column of numbers (i.e., a
-  ;; numerical vector) into screen coordinates _x_ axis, the final function
+;; (= plot-params
+;;    {:x {:range [-1 1]}
+;;     :y {:range [-1 1]}
+;;     :z {:range [-1 1]}
+;;     })
 
 
-  ;; applied-transpec is more like what D3.scales store
-  ;; TODO: does the transpec needs to be stored in a concrete value or it simply
-  ;;   is parameters sent to the constructor of the applied-transpec?
+;; (comment
+;;   (cols-to-rows (js->clj (.-data test-data)))
 
-  (transpec/gen-color-map)
+;;   (d/div {}
 
-  ;; applied-spec
-  {:type    [:color :map]
-   :default "#000000"
-   :items   [["apple" "#cb94d"]
-             ["orange" "#f4a15f"]
-             ["banana" "#a4aa2b"]]}
+;;          )
 
-  ;; transpec
-  {:type       [:x :map]
-   :candidates categorical-10
-   }
+;;   {:interpolation :linear
+;;    :domain        [-83 142]
+;;    :range         [(->hsl 0.2 0.7 0.1) (->hsl 0.1 1.0 0.1)]}
 
-  ;; applied-spec
-  {:type  [:x :map]
-   :items [["apple" -1]
-           ["orange" 0]
-           ["banana" 1]]}
+;;   (= c-scale
+;;      {:interpolation :none
+;;       :domain        ["apple" "orange" "banana"]
+;;       :range         ["#f00" "#ff0" "#fff"]})
 
-  ;; spec
-  {:type [:x :continous]}
+;;   (= x-scale
+;;      {:interpolation :linear
+;;       :domain        [-83 142]
+;;       :range         [-1 1]})
 
-  ;; applied-spec
-  {:type   [:x :continous]
-   :domain [-73 42]
-   :range  [-1 1]}
+;;   {:type [:color :manual]
+;;    :map  {"apple"  "1f77b4"
+;;           "orange" "ff7f0e"
+;;           "banana" "2ca02c"}}
 
-  (= plot-params
-     {:x {:range [-1 1]}
-      :y {:range [-1 1]}
-      :z {:range [-1 1]}
-      })
+;;   (= categorical-10
+;;      ["1f77b4" "ff7f0e" "2ca02c" "d62728" "9467bd"
+;;       "8c564b" "e377c2" "7f7f7f" "bcbd22" "17becf"]
+;;      )
 
-  ;; applied spec saves some computational efforts, and is designed to be
-  ;; enough for drawing the legend
-  (let [applied-spec (apply-spec spec plot-params vec)]
-    (scale applied-spec vec)
-    (legend applied-spec)               ;note `vec` is conspicuously missing
-    )
+;;   ;; Reactive plotting is a list of scaling piplines that turns information in
+;;   ;; the data into various aesthetics.
+;;   ;;
+;;   ;;                           these are either a transformer or a mapper
+;;   ;;                                              ↓
+;;   ;;            ┌──🮤x-extractor🮥── x-vals ──🮤linear-scaler🮥── x-screen-coordinates ──┐
+;;   ;;     data ──┼──🮤y-extractor🮥── y-vals ──🮤linear-scaler🮥── y-screen-coordinates ──┼──🭬 element
+;;   ;;            ├──🮤z-extractor🮥── z-vals ──🮤linear-scaler🮥── z-screen-coordinates ──┤
+;;   ;;            │                                                                    │
+;;   ;;            └──🮤c-extractor🮥── c-vals ──🮤manual-mapper🮥── colors ────────────────┘
+;;   ;;
+;;   ;;   transformer = a function that turns a numeric/character/logical/categorical vector into aes values
+;;   ;;
+;;   ;; If we don't concern ourselves with legend-drawing, then both the extractors and
+;;   ;; the transformers can be simple functions.
+;;   ;;
+;;   ;; However, if we represent the transformer as a function in the host
+;;   ;; language, (as it is usually done,) it is typically very difficult for us to
+;;   ;; automatically draw legends using it. The reason we would want to auto-draw
+;;   ;; legends using a transformer, is that the job of a transformer typically
+;;   ;; requires it computing all the things necessary for drawing a legend. For
+;;   ;; example, in order to map a numerical vector into the x-axis, the
+;;   ;; transformer would have to figure out the extrema of the vector. Well,
+;;   ;; drawing the legend would have to require computing the extrema as well!
+;;   ;;
+;;   ;;
+;;   ;; We focus on a special case, i.e.,
+;;   ;;
+;;   ;;   1. The data is a dataframe, implying that the extractors are trivial column accessions
+;;   ;;   2. The data is a dataframe
+;;   ;;
+;;   ;; A _dataframe_ is abstractly defined as a list of maps, with all the maps in
+;;   ;; the list having the same set of keys. A representation of a dataframe that
+;;   ;; is literally a list of maps is said to be in the _rows-format_. A dataframe
+;;   ;; could also be in the _columns-format_. This is when it is represented as a
+;;   ;; map of lists, with all the lists in the map having the same length. The two
+;;   ;; representations could be easily converted back and forth, with the
+;;   ;; column-format being more compact.
 
-  (def categorical-10
-    ["1f77b4" "ff7f0e" "2ca02c" "d62728" "9467bd"
-     "8c564b" "e377c2" "7f7f7f" "bcbd22" "17becf"])
+;;   ;; A _transpec_ (short for transformation specification) is a value
+;;   ;; that specifies how to define a data transformation process. For example,
+;;   ;; a linear scale would map a numerical vector into another numerical vector
+;;   ;; following a linear formula that has some parameters. A transpec captures
+;;   ;; all the parameters that are _orthogonal_ to the vector to be transformed,
+;;   ;; as well as the plot parameters.
+;;   ;;
+;;   ;; For example, when plotting we need to map a column of numbers (i.e., a
+;;   ;; numerical vector) into screen coordinates _x_ axis, the final function
 
-  (defn extrema
-    [data]
-    [(apply min data) (apply max data)])
 
-  (defn scale
-    [{:keys [interpolation domain range] :as scale-params} x]
-    (cond
-      (fn? interpolation) asdfasdf
-      :else               (case interpolation
-                            :none
-                            ;; TODO
+;;   ;; applied-transpec is more like what D3.scales store
+;;   ;; TODO: does the transpec needs to be stored in a concrete value or it simply
+;;   ;;   is parameters sent to the constructor of the applied-transpec?
 
-                            :linear
-                            ;; TODO
-                            ))
-    ;; TODO
-    ;; output: y
-    )
+;;   (transpec/gen-color-map)
 
-  (let [id-getter    #(get % "gene")
-        x-getter     #(get % "tsne1")
-        y-getter     #(get % "tsne2")
-        z-getter     #(get % "tsne3")
-        c-getter     #(get % "avg_log_exp")
-        x-scale-spec (scale/x-linear (map x-getter data))
-        y-scale-spec (scale/y-linear (map y-getter data))
-        z-scale-spec (scale/z-linear (map z-getter data))
-        c-scale-spec (scale/color-map categorical-10 (map z-getter data))]
-    (<>
-     ($ ColorLegend {:scale c-scale-spec})
-     ($ Canvas
-        ;; ...
-        (for [datum data]
-          ($ Dot {:key (id-getter datum)
-                  :x   (apply-scale x-scale-spec (x-getter datum))
-                  :y   (apply-scale y-scale-spec (y-getter datum))
-                  :z   (apply-scale z-scale-spec (z-getter datum))
-                  :c   (apply-scale c-scale-spec (c-getter datum))}))))))
+;;   ;; applied-spec
+;;   {:type    [:color :map]
+;;    :default "#000000"
+;;    :items   [["apple" "#cb94d"]
+;;              ["orange" "#f4a15f"]
+;;              ["banana" "#a4aa2b"]]}
+
+;;   ;; transpec
+;;   {:type       [:x :map]
+;;    :candidates categorical-10
+;;    }
+
+;;   ;; applied-spec
+;;   {:type  [:x :map]
+;;    :items [["apple" -1]
+;;            ["orange" 0]
+;;            ["banana" 1]]}
+
+;;   ;; spec
+;;   {:type [:x :continous]}
+
+;;   ;; applied-spec
+;;   {:type   [:x :continous]
+;;    :domain [-73 42]
+;;    :range  [-1 1]}
+
+;;   (= plot-params
+;;      {:x {:range [-1 1]}
+;;       :y {:range [-1 1]}
+;;       :z {:range [-1 1]}
+;;       })
+
+;;   ;; applied spec saves some computational efforts, and is designed to be
+;;   ;; enough for drawing the legend
+;;   (let [applied-spec (apply-spec spec plot-params vec)]
+;;     (scale applied-spec vec)
+;;     (legend applied-spec)               ;note `vec` is conspicuously missing
+;;     )
+
+;;   (def categorical-10
+;;     ["1f77b4" "ff7f0e" "2ca02c" "d62728" "9467bd"
+;;      "8c564b" "e377c2" "7f7f7f" "bcbd22" "17becf"])
+
+;;   (defn extrema
+;;     [data]
+;;     [(apply min data) (apply max data)])
+
+;;   (defn scale
+;;     [{:keys [interpolation domain range] :as scale-params} x]
+;;     (cond
+;;       (fn? interpolation) asdfasdf
+;;       :else               (case interpolation
+;;                             :none
+;;                             ;; TODO
+
+;;                             :linear
+;;                             ;; TODO
+;;                             ))
+;;     ;; TODO
+;;     ;; output: y
+;;     )
+
+
+
+;;   )
