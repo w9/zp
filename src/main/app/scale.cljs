@@ -2,12 +2,12 @@
   (:require
    [clojure.core.match :refer-macros [match]]
    [cljs.test :refer-macros [deftest is]]
-   [app.utils :as utils]))
+   ;; [tupelo.core]
+   [app.utils :as utils :refer-macros [forv]]))
 
 (def categorical-10
   ["#1f77b4" "#ff7f0e" "#2ca02c" "#d62728" "#9467bd"
    "#8c564b" "#e377c2" "#7f7f7f" "#bcbd22" "#17becf"])
-
 
 (defn axis-linear
   ([xs] (axis-linear xs {}))
@@ -21,7 +21,7 @@
    ))
 
 (defn color-map
-  "Generate a scale-spec from categorical values `xs` to a list of colors `colors`.
+  "Generate a scale-spec from categorical values `xs` to a list of colors.
 
   If `cycle-colors?` is true, the colors will be cycled when there are more levels
   than colors. Otherwise, the `others-color` will be used for the extra levels.
@@ -29,10 +29,11 @@
   The `missing-color` will be used in the `scale` function when an unexpected value
   is encountered.
   "
-  ([colors xs] (color-map colors xs {}))
-  ([colors xs
-    {:keys [cycle-colors? missing-color extra-color]
-     :or   {cycle-colors? false
+  ([xs] (color-map xs {}))
+  ([xs
+    {:keys [colors cycle-colors? missing-color extra-color]
+     :or   {colors        categorical-10
+            cycle-colors? false
             missing-color "#000000"
             extra-color   "#777777"}
      :as   opts}]
@@ -51,28 +52,27 @@
      )))
 
 (defn apply-scale
-  "Apply scale to a vector `xs` according to a scale-spec `s`, outputing another vector.
+  "Apply scale to a value `x` according to a scale-spec `s`, outputing another vector.
 
-  This ia pure function on `xs` and `s`. All global plotting parameters should
+  This ia pure function on `x` and `s`. All global plotting parameters should
   already been factored into `s`.
   "
-  [s xs]
+  [s x]
   (match s
 
          {:type    [:map :color]
           :missing missing
           :domain  d
           :range   r}
-         (let [m       (zipmap d r)
-               fetch-x (fn [x] (get m x missing))]
-           (mapv fetch-x xs))
+         (let [m (zipmap d r)]
+           (get m x missing))
 
          {:type   [:linear _]
           :domain [d0 d1]
           :range  [r0 r1]}
          (let [get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
                get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
-           (mapv (fn [x] (-> x get-ratio get-y)) xs))
+           (-> x get-ratio get-y))
 
          :else (throw (ex-info "unknown scale-spec" {:scale-spec s}))
          )
@@ -93,24 +93,6 @@
        [0 0.1 0.2 0.9 1])))
 
 (comment
-  (let [data (utils/cols-to-rows (js->clj (.-data utils/test-data)))
-
-        id-getter #(get % "gene")
-        x-getter  #(get % "tsne1")
-        y-getter  #(get % "tsne2")
-        z-getter  #(get % "tsne3")
-        c-getter  #(get % "avg_log_exp")
-
-        x-scale-spec (axis-linear (map x-getter data))
-        y-scale-spec (axis-linear (map y-getter data))
-        z-scale-spec (axis-linear (map z-getter data))
-        c-scale-spec (color-map categorical-10 (map z-getter data))]
-    (for [datum data]
-      {:key (id-getter datum)
-
-       :y (apply-scale y-scale-spec (y-getter datum))
-       :z (apply-scale z-scale-spec (z-getter datum))
-       :c (apply-scale c-scale-spec (c-getter datum))}))
 
   )
 

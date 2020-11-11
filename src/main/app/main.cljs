@@ -9,7 +9,8 @@
    [helix.core :refer [defnc $ <>]]
    [helix.dom :as d]
    [helix.hooks :as hooks]
-   [app.utils :as utils :refer [map-vals]]
+   [app.utils :as utils :refer [map-vals] :refer-macros [forv]]
+   [app.scale :as scale]
 
    ["react" :as react]
    ["react-dom" :as react-dom]
@@ -17,10 +18,8 @@
    ))
 
 
-
-
 (defnc Box
-  [{:keys [position] :as props}]
+  [{:keys [x y z c] :as props}]
   (let [mesh                 (react/useRef)
         [hovered setHovered] (react/useState false)
         [active setActive]   (react/useState false)]
@@ -29,13 +28,13 @@
                      (set! (.-x r) (+ 0.01 (.-x r)))
                      (set! (.-y r) (+ 0.01 (.-y r))))))
     ($ "mesh" {:ref           mesh
-               :position      position
+               :position      [x y z]
                :scale         (if active #js[1.5 1.5 1.5] #js[1 1 1])
                :onClick       (fn [e] (setActive (not active)))
                :onPointerOver (fn [e] (setHovered true))
                :onPointerOut  (fn [e] (setHovered false))}
        ($ "boxBufferGeometry" {:args #js [1 1 1]})
-       ($ "meshStandardMaterial" {:color (if hovered "hotpink" "orange")}))
+       ($ "meshStandardMaterial" {:color (if hovered "hotpink" c)}))
     ))
 
 (defnc root
@@ -47,8 +46,27 @@
                             :angle    0.15
                             :penumbra 1})
             ($ "pointLight" {:position #js [-10 -10 -10]})
-            (for [datum (utils/cols-to-rows (js->clj (.-data utils/test-data)))]
-              ($ Box {:key (get datum "gene") :position #js [(get datum "tsne1") (get datum "tsne2") (get datum "tsne2")]}))
+            (<>
+             (let [data (utils/cols-to-rows (js->clj (.-data utils/test-data)))
+
+                   id-getter #(get % "gene")
+                   x-getter  #(get % "tsne1")
+                   y-getter  #(get % "tsne2")
+                   z-getter  #(get % "tsne3")
+                   c-getter  #(get % "avg_log_exp")
+
+                   x-scale-spec (scale/axis-linear (map x-getter data))
+                   y-scale-spec (scale/axis-linear (map y-getter data))
+                   z-scale-spec (scale/axis-linear (map z-getter data))
+                   c-scale-spec (scale/color-map scale/categorical-10 (map z-getter data))]
+
+               (forv [datum data]
+                 ($ Box {:key (id-getter datum)
+
+                         :y (scale/apply-scale y-scale-spec (y-getter datum))
+                         :z (scale/apply-scale z-scale-spec (z-getter datum))
+                         :c (scale/apply-scale c-scale-spec (c-getter datum))})
+                 )))
             )
          (d/div {:id "overlay"}
                 (d/div {:id "toolbar"}
