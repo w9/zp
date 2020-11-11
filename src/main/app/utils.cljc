@@ -1,6 +1,7 @@
 (ns app.utils
   (:require
-   [cljs.test :refer-macros [deftest is testing run-tests]]))
+   ;; [tupelo.core]
+   [cljs.test :refer [deftest is testing run-tests]]))
 
 (defmacro forv
   "Like clojure.core/for but returns results in a vector.
@@ -31,7 +32,7 @@
   [xs ys]
   (zipping [] (fn [s x y] (conj s [x y])) xs ys))
 
-(deftest zipvec-test
+(deftest test-zipvec
   (is (=
        (zipvec [1 2 3 4] [:foo :bar :baz :bek])
        [[1 :foo] [2 :bar] [3 :baz] [4 :bek]]))
@@ -59,3 +60,15 @@
                          [tuple-key (apply tx-fn tuple-val tx-args)])
         map-out        (into {} tuple-seq-out)]
     map-out))
+
+(defn extrema
+  [xs]
+  (if (empty? xs)
+    (throw (ex-info "xs is empty" {:xs xs}))
+    [(apply min xs) (apply max xs)]))
+
+(deftest test-extrema
+  (is (= (extrema [0 -1 0 10 0])
+         [-1 10]))
+  (is (thrown? js/Error (extrema [])
+         [nil nil])))

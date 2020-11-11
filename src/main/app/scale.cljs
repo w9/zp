@@ -16,6 +16,7 @@
   "
   [s xs]
   (match s
+
          {:type    [:map :color]
           :missing missing
           :domain  d
@@ -23,6 +24,15 @@
          (let [m       (zipmap d r)
                fetch-x (fn [x] (get m x missing))]
            (mapv fetch-x xs))
+
+         {:type   [:linear _]
+          :domain [d0 d1]
+          :range  [r0 r1]}
+         (let [get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
+               get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
+           (mapv (fn [x] (-> x get-ratio get-y)) xs))
+
+         :else (throw (ex-info "unknown scale-spec" {:scale-spec s}))
          )
   )
 
@@ -30,7 +40,15 @@
   (is (=
        (let [xs ["apple" "apple" "orange" "banana" "apple"]]
          (apply-scale (color-map categorical-10 xs) xs))
-       ["#1f77b4" "#1f77b4" "#2ca02c" "#ff7f0e" "#1f77b4"])))
+       ["#1f77b4" "#1f77b4" "#2ca02c" "#ff7f0e" "#1f77b4"]))
+  (is (=
+       (let [xs [1 2 3 10 11]]
+         (apply-scale (x-linear xs) xs))
+       [-1 -0.8 -0.6 0.8 1]))
+  (is (=
+       (let [xs [1 2 3 10 11]]
+         (apply-scale (x-linear xs {:range [0 1]}) xs))
+       [0 0.1 0.2 0.9 1])))
 
 (comment
 
@@ -41,6 +59,18 @@
     (legend applied-spec)               ;note `vec` is conspicuously missing
     )
   )
+
+
+(defn x-linear
+  ([xs] (x-linear xs {}))
+  ([xs
+    {:keys [range]
+     :or   {range [-1 1]}
+     :as   opts}]
+   {:type   [:linear :x]
+    :domain (utils/extrema xs)
+    :range  range}
+   ))
 
 (defn color-map
   "Generate a scale-spec from categorical values `xs` to a list of colors `colors`.
@@ -274,10 +304,10 @@
         y-getter     #(get % "tsne2")
         z-getter     #(get % "tsne3")
         c-getter     #(get % "avg_log_exp")
-        x-scale-spec (:domain (extrema (map x-getter data)) :range [-1 1])
-        y-scale-spec (:domain (extrema (map y-getter data)) :range [-1 1])
-        z-scale-spec (:domain (extrema (map z-getter data)) :range [-1 1])
-        c-scale-spec (color-map categorical-10 (map z-getter data))]
+        x-scale-spec (scale/x-linear (map x-getter data))
+        y-scale-spec (scale/y-linear (map y-getter data))
+        z-scale-spec (scale/z-linear (map z-getter data))
+        c-scale-spec (scale/color-map categorical-10 (map z-getter data))]
     (<>
      ($ ColorLegend {:scale c-scale-spec})
      ($ Canvas
