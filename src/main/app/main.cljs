@@ -28,8 +28,8 @@
                      (set! (.-x r) (+ 0.01 (.-x r)))
                      (set! (.-y r) (+ 0.01 (.-y r))))))
     ($ "mesh" {:ref           mesh
-               :position      [x y z]
-               :scale         (if active #js[1.5 1.5 1.5] #js[1 1 1])
+               :position      #js[x y z]
+               :scale         (if active #js[0.15 0.15 0.15] #js[0.1 0.1 0.1])
                :onClick       (fn [e] (setActive (not active)))
                :onPointerOver (fn [e] (setHovered true))
                :onPointerOut  (fn [e] (setHovered false))}
@@ -42,10 +42,10 @@
   (d/div {:id "plot-container"}
          ($ r3/Canvas
             ($ "ambientLight" {:intensity 0.5})
-            ($ "spotLight" {:position #js [10 10 10]
+            ($ "spotLight" {:position #js[10 10 10]
                             :angle    0.15
                             :penumbra 1})
-            ($ "pointLight" {:position #js [-10 -10 -10]})
+            ($ "pointLight" {:position #js[-10 -10 -10]})
             (<>
              (let [data (utils/cols-to-rows (js->clj (.-data utils/test-data)))
 
@@ -58,11 +58,12 @@
                    x-scale-spec (scale/axis-linear (map x-getter data))
                    y-scale-spec (scale/axis-linear (map y-getter data))
                    z-scale-spec (scale/axis-linear (map z-getter data))
-                   c-scale-spec (scale/color-map scale/categorical-10 (map z-getter data))]
+                   c-scale-spec (scale/color-map (map c-getter data))]
 
                (forv [datum data]
                  ($ Box {:key (id-getter datum)
 
+                         :x (scale/apply-scale x-scale-spec (x-getter datum))
                          :y (scale/apply-scale y-scale-spec (y-getter datum))
                          :z (scale/apply-scale z-scale-spec (z-getter datum))
                          :c (scale/apply-scale c-scale-spec (c-getter datum))})
