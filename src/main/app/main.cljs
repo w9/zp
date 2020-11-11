@@ -1,19 +1,33 @@
-;; TODO: NEXT: load a json and show it verbatim on the screen
-
 (ns app.main
   (:refer-clojure :exclude [Box])
+  (:require-macros
+   [app.utils :refer [forv]])
   (:require
-   ["react" :as react]
-   ["react-dom" :as react-dom]
-   [helix.core :refer [defnc $]]
-   [helix.hooks :as hooks]
-   [helix.dom :as d]
    [clojure.core.async :as async :refer [go <! >!]]
-   [goog.Uri :as guri]
+   [clojure.string :as str]
    [goog.format :as gformat]
    [goog.net.XhrIo :as gxhrio]
+   [goog.Uri :as guri]
+   [helix.core :refer [defnc $ <>]]
+   [helix.dom :as d]
+   [helix.hooks :as hooks]
+   ;; [tupelo.core :as tupelo]
+   [app.utils :as utils :refer [map-vals]]
+
+   ["react" :as react]
+   ["react-dom" :as react-dom]
    ["react-three-fiber" :as r3]
-   [clojure.string :as str]))
+   ))
+
+(defn cols-to-rows
+  [cols]
+  (let [lengths    (for [[k v] cols] (count v))
+        min-length (apply min lengths)]
+    (forv [i (range min-length)]
+          (map-vals cols #(nth % i)))))
+
+
+
 
 (def test-data
   ^js (clj->js {"data"     {"avg_log_exp" [0.9639 1.0483 0.7468 0.6396 0.4754 1.5452 1.6167 0.5952 1.0576 1.0403]
@@ -55,8 +69,8 @@
                             :angle    0.15
                             :penumbra 1})
             ($ "pointLight" {:position #js [-10 -10 -10]})
-            ($ Box {:position #js [-1.2 0 0]})
-            ($ Box {:position #js [1.2 0 0]})
+            (for [datum (cols-to-rows (js->clj (.-data test-data)))]
+              ($ Box {:key (get datum "gene") :position #js [(get datum "tsne1") (get datum "tsne2") (get datum "tsne2")]}))
             )
          (d/div {:id "overlay"}
                 (d/div {:id "toolbar"}
@@ -92,7 +106,9 @@
 (defn ^:export refresh!
   []
   (let [root-el (js/document.getElementById "root")]
-    (react-dom/render ($ root) root-el)))
+    (react-dom/render ($ root) root-el)
+    (js/console.log (js->clj (.-data test-data)))
+    ))
 
 (defn ^:export init!
   []
@@ -102,7 +118,8 @@
           root-el     (js/document.getElementById "root")
           old-root-el (js/document.getElementById "old-root")]
       ;; (render-zp old-root-el json-input)
-      (react-dom/render ($ root) root-el))))
+      (react-dom/render ($ root) root-el)
+      )))
 
 ;; let toolbarDom = document.createElement('div')
 ;; toolbarDom.id = 'toolbar'
