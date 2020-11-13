@@ -1,13 +1,10 @@
 (ns app.scale
   (:require
-   [clojure.core.match :refer-macros [match]]
-   [cljs.test :refer-macros [deftest is]]
+   [clojure.core.match :refer [match]]
+   [cljs.test :refer [deftest is]]
    ;; [tupelo.core]
-   [app.utils :as utils :refer-macros [forv]]))
-
-(def categorical-10
-  ["#1f77b4" "#ff7f0e" "#2ca02c" "#d62728" "#9467bd"
-   "#8c564b" "#e377c2" "#7f7f7f" "#bcbd22" "#17becf"])
+   [app.color :as color]
+   [app.utils :as utils :refer [forv]]))
 
 (defn axis-linear
   ([xs] (axis-linear xs {}))
@@ -20,8 +17,44 @@
     :range  range}
    ))
 
+(defn apply-axis-linear
+  [{:keys [domain range]} x]
+  (let [[d0 d1]   domain
+        [r0 r1]   range
+        get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
+        get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
+    (-> x get-ratio get-y)))
+
+
+(defn color-continuous
+  "Generate a scale-spec from numeric values `xs` to a color spectrum.
+
+  It linearly maps `xs` into [0 1] and then applys the `spectrum` function to get a color.
+
+  The `spectrum` is a function from [0 1] to colors.
+
+  The `missing-color` will be used in the `scale` function when an unexpected value
+  is encountered.
+  "
+  [xs
+   {:keys [spectrum missing-color]
+    :or   {spectrum      color/blues
+           missing-color "#000000"}}]
+  {:type     [:trans-fn :color]
+   :missing  missing-color
+   :domain   (utils/extrema xs)
+   :trans-fn spectrum}
+  )
+
+(defn apply-color-continuous
+  [{:keys [missing domain trans-fn]} x]
+  (let [z (apply-axis-linear {:domain domain :range [0 1]} x)]
+    (trans-fn z)))
+
 (defn color-map
   "Generate a scale-spec from categorical values `xs` to a list of colors.
+
+  The list of colors is specified in the option `colors`.
 
   If `cycle-colors?` is true, the colors will be cycled when there are more levels
   than colors. Otherwise, the `others-color` will be used for the extra levels.
@@ -32,7 +65,7 @@
   ([xs] (color-map xs {}))
   ([xs
     {:keys [colors cycle-colors? missing-color extra-color]
-     :or   {colors        categorical-10
+     :or   {colors        color/categorical-10
             cycle-colors? false
             missing-color "#000000"
             extra-color   "#777777"}
@@ -47,9 +80,14 @@
          n      (count levels)]
      {:type    [:map :color]
       :missing missing-color
-      :domain  levels
-      :range   (vec (take n colors_))}
+      :inputs  levels
+      :outputs (vec (take n colors_))}
      )))
+
+(defn apply-color-map
+  [{:keys [missing inputs outputs] :as spec} x]
+  (let [m (zipmap inputs outputs)]
+    (get m x missing)))
 
 (defn apply-scale
   "Apply scale to a value `x` according to a scale-spec `s`, outputing another vector.
@@ -57,22 +95,11 @@
   This ia pure function on `x` and `s`. All global plotting parameters should
   already been factored into `s`.
   "
-  [s x]
-  (match s
-
-         {:type    [:map :color]
-          :missing missing
-          :domain  d
-          :range   r}
-         (let [m (zipmap d r)]
-           (get m x missing))
-
-         {:type   [:linear _]
-          :domain [d0 d1]
-          :range  [r0 r1]}
-         (let [get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
-               get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
-           (-> x get-ratio get-y))
+  [{:keys [type] :as s} x]
+  (match type
+         [:map :color] (apply-color-map s x)
+         [:linear _] (apply-axis-linear s x)
+         [:trans-fn :color] (apply-color-continuous s x)
 
          :else (throw (ex-info "unknown scale-spec" {:scale-spec s}))
          )
@@ -81,7 +108,7 @@
 (deftest test-apply-scale
   (is (=
        (let [xs ["apple" "apple" "orange" "banana" "apple"]]
-         (apply-scale (color-map categorical-10 xs) xs))
+         (apply-scale (color-map color/categorical-10 xs) xs))
        ["#1f77b4" "#1f77b4" "#2ca02c" "#ff7f0e" "#1f77b4"]))
   (is (=
        (let [xs [1 2 3 10 11]]
