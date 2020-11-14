@@ -4,7 +4,8 @@
   [1] https://github.com/hsluv/hsluv-emacs"
   (:require
    [goog.string :as gs]
-   [cljs.test :refer [deftest is run-tests]])
+   [cljs.test :refer [deftest is run-tests]]
+   [app.utils :as utils])
   )
 
 (defn check-rgb
@@ -79,9 +80,11 @@
 
 (defn blues
   [pct]
-  ;; (let [c0 [#56b1f7]
-  ;;       c1 [#132b43]])
+  (let [[r0 g0 b0] (hex-to-rgb "#56b1f7")
+        [r1 g1 b1] (hex-to-rgb "#132b43")]
+    (rgb-to-hex (mapv #(utils/linearly-interpolate [0 1] % pct) [[r0 r1] [g0 g1] [b0 b1]]))))
 
-  (gs/format "asdfasf")
+(comment
+  (blues 1)
+
   )
-

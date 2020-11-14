@@ -19,12 +19,7 @@
 
 (defn apply-axis-linear
   [{:keys [domain range]} x]
-  (let [[d0 d1]   domain
-        [r0 r1]   range
-        get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
-        get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
-    (-> x get-ratio get-y)))
-
+  (utils/linearly-interpolate domain range x))
 
 (defn color-continuous
   "Generate a scale-spec from numeric values `xs` to a color spectrum.
@@ -48,7 +43,7 @@
 
 (defn apply-color-continuous
   [{:keys [missing domain trans-fn]} x]
-  (let [z (apply-axis-linear {:domain domain :range [0 1]} x)]
+  (let [z (utils/linearly-interpolate domain [0 1] x)]
     (trans-fn z)))
 
 (defn color-map
