@@ -42,19 +42,23 @@
     :trans-fn spectrum}
    ))
 
-(deftest test-color-continous
-  (is (=
-       ("#56b1f7" "#4fa4e5" "#4996d3" "#4289c1" "#3b7baf"
-        "#356e9d" "#2e618b" "#275379" "#204667" "#1a3855"
-        "#132b43")
-       (let [xs (range 11)]
-         (map #(apply-color-continuous (color-continuous xs) %) xs))))
-  )
-
 (defn apply-color-continuous
   [{:keys [missing domain trans-fn]} x]
   (let [z (utils/linearly-interpolate domain [0 1] x)]
     (trans-fn z)))
+
+(deftest test-color-continous
+  (is (=
+       ("#56b1f7" "#4fa4e5" "#4996d3" "#4289c1" "#3b7baf"
+        "#356e9d"
+        "#2e618b"
+        "#275379"
+        "#204667"
+        "#1a3855"
+        "#132b43")
+       (let [xs (range 11)]
+         (map #(apply-color-continuous (color-continuous xs) %) xs))))
+  )
 
 (defn color-map
   "Generate a scale-spec from categorical values `xs` to a list of colors.

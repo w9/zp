@@ -58,16 +58,16 @@
                    x-scale-spec (scale/axis-linear (map x-getter data))
                    y-scale-spec (scale/axis-linear (map y-getter data))
                    z-scale-spec (scale/axis-linear (map z-getter data))
-                   c-scale-spec (scale/color-map (map c-getter data))]
+                   c-scale-spec (scale/color-continuous (map c-getter data))]
 
                (forv [datum data]
-                 ($ Box {:key (id-getter datum)
+                     ($ Box {:key (id-getter datum)
 
-                         :x (scale/apply-scale x-scale-spec (x-getter datum))
-                         :y (scale/apply-scale y-scale-spec (y-getter datum))
-                         :z (scale/apply-scale z-scale-spec (z-getter datum))
-                         :c (scale/apply-scale c-scale-spec (c-getter datum))})
-                 )))
+                             :x (scale/apply-scale x-scale-spec (x-getter datum))
+                             :y (scale/apply-scale y-scale-spec (y-getter datum))
+                             :z (scale/apply-scale z-scale-spec (z-getter datum))
+                             :c (scale/apply-scale c-scale-spec (c-getter datum))})
+                     )))
             )
          (d/div {:id "overlay"}
                 (d/div {:id "toolbar"}
