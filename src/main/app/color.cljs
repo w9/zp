@@ -82,9 +82,24 @@
   [pct]
   (let [[r0 g0 b0] (hex-to-rgb "#56b1f7")
         [r1 g1 b1] (hex-to-rgb "#132b43")]
-    (rgb-to-hex (mapv #(utils/linearly-interpolate [0 1] % pct) [[r0 r1] [g0 g1] [b0 b1]]))))
+    (let [itpl  #(js/Math.round (utils/linearly-interpolate [0 1] % pct))
+          color (mapv itpl [[r0 r1] [g0 g1] [b0 b1]])]
+      (rgb-to-hex color))))
 
-(comment
-  (blues 1)
-
+(deftest test-blues
+  (is (=
+       "#56b1f7"
+       (blues 0)
+       ))
+  (is (=
+       "#132b43"
+       (blues 1)
+       ))
+  (is (=
+       ("#56b1f7" "#4fa4e5" "#4996d3" "#4289c1" "#3b7baf"
+        "#356e9d" "#2e618b" "#275379" "#204667" "#1a3855"
+        "#132b43")
+       (map blues (map #(/ % 10) (range 11)))
+       ))
   )
+

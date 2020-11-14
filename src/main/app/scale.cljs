@@ -31,14 +31,24 @@
   The `missing-color` will be used in the `scale` function when an unexpected value
   is encountered.
   "
-  [xs
-   {:keys [spectrum missing-color]
-    :or   {spectrum      color/blues
-           missing-color "#000000"}}]
-  {:type     [:trans-fn :color]
-   :missing  missing-color
-   :domain   (utils/extrema xs)
-   :trans-fn spectrum}
+  ([xs] (color-continuous xs {}))
+  ([xs
+    {:keys [spectrum missing-color]
+     :or   {spectrum      color/blues
+            missing-color "#000000"}}]
+   {:type     [:continuous :color]
+    :missing  missing-color
+    :domain   (utils/extrema xs)
+    :trans-fn spectrum}
+   ))
+
+(deftest test-color-continous
+  (is (=
+       ("#56b1f7" "#4fa4e5" "#4996d3" "#4289c1" "#3b7baf"
+        "#356e9d" "#2e618b" "#275379" "#204667" "#1a3855"
+        "#132b43")
+       (let [xs (range 11)]
+         (map #(apply-color-continuous (color-continuous xs) %) xs))))
   )
 
 (defn apply-color-continuous
@@ -94,7 +104,7 @@
   (match type
          [:map :color] (apply-color-map s x)
          [:linear _] (apply-axis-linear s x)
-         [:trans-fn :color] (apply-color-continuous s x)
+         [:continuous :color] (apply-color-continuous s x)
 
          :else (throw (ex-info "unknown scale-spec" {:scale-spec s}))
          )

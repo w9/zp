@@ -67,6 +67,7 @@
   (is (thrown? js/Error (extrema [])
                [nil nil])))
 
+;; TODO: use interleave instead
 (defn cols-to-rows
   [cols]
   (let [lengths    (for [[k v] cols] (count v))
@@ -94,3 +95,17 @@
         get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
     (-> x get-ratio get-y)))
 
+
+(defmacro it->
+  "A threading macro like as-> that always uses the symbol 'it' as the placeholder for the next threaded value:
+
+        (it-> 1
+              (inc it)
+              (+ it 3)
+              (/ 10 it))
+        ;=> 2 "
+  [expr & forms]
+  `(let [~'it ~expr
+         ~@(interleave (repeat 'it) forms)
+         ]
+     ~'it))
