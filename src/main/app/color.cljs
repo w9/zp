@@ -3,7 +3,8 @@
 
   [1] https://github.com/hsluv/hsluv-emacs"
   (:require
-   [goog.string :as gs])
+   [goog.string :as gs]
+   [cljs.test :refer [deftest is]])
   )
 
 (defn rgb-to-string
@@ -27,12 +28,13 @@
        (throw (ex-info "unrecognized format" {:format format}))))
    ))
 
-(comment
-  (rgb-to-string [1 0 255])
-
-  (rgb-to-string [1 0 255])
-
-  )
+(deftest test-rgb-to-string
+  (is (=
+       "#0100ff"
+       (rgb-to-string [1 0 255])))
+  (is (=
+       "#15f104"
+       (rgb-to-string [21 241 4]))))
 
 (def categorical-10
   ["#1f77b4" "#ff7f0e" "#2ca02c" "#d62728" "#9467bd"
