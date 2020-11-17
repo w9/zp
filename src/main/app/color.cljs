@@ -8,9 +8,13 @@
    [app.utils :as utils]
    [clojure.string :as str]
    [clojure.spec.alpha :as s]
-   [clojure.spec.test.alpha :as stest]
    [clojure.test.check.generators :as gen]
-   [app.chroma :as chroma]
+
+   ;; [clojure.spec.test.alpha :as stest]
+   ;; [clojure.test.check]
+   ;; [clojure.test.check.properties]
+
+   ["./chroma" :as cm]
    )
   )
 
@@ -25,12 +29,14 @@
                      (s/and string? #(str/starts-with? % "#") #(= 7 (count %)))
                      #(gen/fmap (fn [x] (str "#" (str/join x))) (gen/vector gen-hex 6))))
 (s/def ::rgb (s/coll-of ::hex-pair :count 3))
-(s/fdef rgb-to-hex :args (s/cat :rgb ::rgb) :ret ::color-hex)
+(s/def ::percentage (s/and number? #(<= 0 % 1)))
+
 
 (defn rgb-to-css-rgb
   [rgb]
   (apply str (concat ["rgb("] (interpose "," rgb) [")"])))
 
+(s/fdef rgb-to-hex :args (s/cat :rgb ::rgb) :ret ::color-hex)
 (defn rgb-to-hex
   [rgb]
   {:pre [(s/valid? ::rgb rgb)]}
@@ -44,6 +50,10 @@
   (rgb-to-hex [256 2 3])
   )
 
+(s/fdef hex-to-rgb
+  :args (s/cat :hex ::color-hex)
+  :ret ::rgb
+  :fn #(= (-> % :args :hex) (-> % :ret rgb-to-hex)))
 (defn hex-to-rgb
   [hex]
   (let [hex-to-num #(js/parseInt % 16)
@@ -53,38 +63,18 @@
     [r g b])
   )
 
-(deftest test-hex-to-rgb
-  (let [colors ["#1f77b4" "#ff7f0e" "#2ca02c" "#d62728" "#9467bd"
-                "#8c564b" "#e377c2" "#7f7f7f" "#bcbd22" "#17becf"]]
-    (is (= (map rgb-to-hex (map hex-to-rgb colors)))))
-  )
-
 (def categorical-10
   ["#1f77b4" "#ff7f0e" "#2ca02c" "#d62728" "#9467bd"
    "#8c564b" "#e377c2" "#7f7f7f" "#bcbd22" "#17becf"])
 
+(s/fdef blues
+  :args (s/cat :pct ::percentage)
+  :ret ::color-hex)
 (defn blues
   [pct]
-  (let [[r0 g0 b0] (hex-to-rgb "#56b1f7")
-        [r1 g1 b1] (hex-to-rgb "#132b43")]
+  (let [low (hex-to-rgb "#56b1f7")
+        high (hex-to-rgb "#132b43")]
     (let [itpl  #(js/Math.round (utils/linearly-interpolate [0 1] % pct))
-          color (mapv itpl [[r0 r1] [g0 g1] [b0 b1]])]
+          color (mapv itpl (utils/zipvec low high))]
       (rgb-to-hex color))))
-
-(deftest test-blues
-  (is (=
-       "#56b1f7"
-       (blues 0)
-       ))
-  (is (=
-       "#132b43"
-       (blues 1)
-       ))
-  (is (=
-       ("#56b1f7" "#4fa4e5" "#4996d3" "#4289c1" "#3b7baf"
-        "#356e9d" "#2e618b" "#275379" "#204667" "#1a3855"
-        "#132b43")
-       (map blues (map #(/ % 10) (range 11)))
-       ))
-  )
 
