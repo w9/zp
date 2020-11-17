@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "chroma-js": "^2.1.0",
     "create-react-class": "^15.7.0",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",

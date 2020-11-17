@@ -5,59 +5,44 @@
   (:require
    [goog.string :as gs]
    [cljs.test :refer [deftest is run-tests]]
-   [app.utils :as utils])
+   [app.utils :as utils]
+   [clojure.string :as str]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as stest]
+   [clojure.test.check.generators :as gen]
+   [app.chroma :as chroma]
+   )
   )
 
-(defn check-rgb
-  [rgb]
-  ;; check if all components are within range
-  (doseq [[n x] (zipmap ["r" "g" "b"] rgb)]
-    (when (not (and (<= 0 x 255)))
-      (throw (ex-info (str n " value out of range")
-                      {:rgb rgb}))))
-  )
+(def gen-hex
+  "Generates alphanumeric characters."
+  (gen/fmap char
+            (gen/one-of [(gen/choose 48 57)
+                         (gen/choose 97 102)])))
+
+(s/def ::hex-pair (s/and integer? #(<= 0 % 255)))
+(s/def ::color-hex (s/with-gen
+                     (s/and string? #(str/starts-with? % "#") #(= 7 (count %)))
+                     #(gen/fmap (fn [x] (str "#" (str/join x))) (gen/vector gen-hex 6))))
+(s/def ::rgb (s/coll-of ::hex-pair :count 3))
+(s/fdef rgb-to-hex :args (s/cat :rgb ::rgb) :ret ::color-hex)
 
 (defn rgb-to-css-rgb
   [rgb]
-  (check-rgb rgb)
   (apply str (concat ["rgb("] (interpose "," rgb) [")"])))
 
 (defn rgb-to-hex
   [rgb]
-  (check-rgb rgb)
+  {:pre [(s/valid? ::rgb rgb)]}
   (let [num-to-hex #(-> %
                         (.toString 16)
                         (.padStart 2 "0"))]
     (apply str "#" (map num-to-hex rgb))))
 
-(deftest test-rgb-to-hex
-  (is (=
-       "#0100ff"
-       (rgb-to-hex [1 0 255])))
-  (is (=
-       "#15f104"
-       (rgb-to-hex [21 241 4])))
-  (is (thrown?
-       js/Error
-       (rgb-to-hex [256 241 4])))
-  (is (thrown?
-       js/Error
-       (rgb-to-hex [255 -1 4]))))
-
-(deftest test-rgb-to-css-rgb
-  (is (=
-       "rgb(1,0,255)"
-       (rgb-to-css-rgb [1 0 255])))
-  (is (=
-       "rgb(21,241,4)"
-       (rgb-to-css-rgb [21 241 4])))
-  (is (thrown?
-       js/Error
-       (rgb-to-css-rgb [256 241 4])))
-  (is (thrown?
-       js/Error
-       (rgb-to-css-rgb [255 -1 4]))))
-
+(comment
+  (s/exercise-fn rgb-to-hex)
+  (rgb-to-hex [256 2 3])
+  )
 
 (defn hex-to-rgb
   [hex]

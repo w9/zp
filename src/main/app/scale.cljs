@@ -42,8 +42,13 @@
     :trans-fn spectrum}
    ))
 
+(comment
+  (let [xs (range 11)]
+    (color-continuous xs))
+  )
+
 (defn apply-color-continuous
-  [{:keys [missing domain trans-fn]} x]
+  [{:keys [missing domain trans-fn] :as spec} x]
   (let [z (utils/linearly-interpolate domain [0 1] x)]
     (trans-fn z)))
 
@@ -58,6 +63,7 @@
         "#132b43")
        (let [xs (range 11)]
          (map #(apply-color-continuous (color-continuous xs) %) xs))))
+
   )
 
 (defn color-map
