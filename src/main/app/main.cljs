@@ -124,7 +124,6 @@
           root-el     (js/document.getElementById "root")
           old-root-el (js/document.getElementById "old-root")]
       ;; (render-zp old-root-el json-input)
-      (js/console.log json-input)
       ;; (reset! data (js->clj json-input))
       (reset! data (js->clj (.-data utils/test-data)))
       (react-dom/render ($ root {:data @data}) root-el)
