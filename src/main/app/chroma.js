@@ -134,7 +134,7 @@ export const hex2rgb = (hex) => {
   return [r, g, b];
 };
 
-const rgb2hex = ([r, g, b]) => {
+export const rgb2hex = ([r, g, b]) => {
   r = round(r);
   g = round(g);
   b = round(b);

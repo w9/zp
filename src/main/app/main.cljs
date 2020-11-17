@@ -38,7 +38,7 @@
     ))
 
 (defnc root
-  []
+  [{:keys [data] :as props}]
   (d/div {:id "plot-container"}
          ($ r3/Canvas
             ($ "ambientLight" {:intensity 0.5})
@@ -47,7 +47,15 @@
                             :penumbra 1})
             ($ "pointLight" {:position #js[-10 -10 -10]})
             (<>
-             (let [data (utils/cols-to-rows (js->clj (.-data utils/test-data)))
+             (let [data (utils/cols-to-rows data)
+
+                   ;; id-getter #(get % "sample")
+                   ;; x-getter  #(get % "X1")
+                   ;; y-getter  #(get % "X2")
+                   ;; z-getter  #(get % "X3")
+                   ;; c-getter  #(get % "X1")
+
+                   ;; TODO: get this from the data
 
                    id-getter #(get % "gene")
                    x-getter  #(get % "tsne1")
@@ -100,10 +108,12 @@
     (js/console.log (.-plot zp))
     (js/console.log (.plot zp (.-data json-input) (.-mappings json-input) (.-options json-input)))))
 
+(defonce data (atom nil))
+
 (defn ^:export refresh!
   []
   (let [root-el (js/document.getElementById "root")]
-    (react-dom/render ($ root) root-el)
+    (react-dom/render ($ root {:data @data}) root-el)
     ))
 
 (defn ^:export init!
@@ -114,7 +124,10 @@
           root-el     (js/document.getElementById "root")
           old-root-el (js/document.getElementById "old-root")]
       ;; (render-zp old-root-el json-input)
-      (react-dom/render ($ root) root-el)
+      (js/console.log json-input)
+      ;; (reset! data (js->clj json-input))
+      (reset! data (js->clj (.-data utils/test-data)))
+      (react-dom/render ($ root {:data @data}) root-el)
       )))
 
 ;; let toolbarDom = document.createElement('div')

@@ -72,9 +72,15 @@
   :ret ::color-hex)
 (defn blues
   [pct]
-  (let [low (hex-to-rgb "#56b1f7")
-        high (hex-to-rgb "#132b43")]
-    (let [itpl  #(js/Math.round (utils/linearly-interpolate [0 1] % pct))
+  (let [low (-> "#56b1f7"
+                cm/hex2rgb
+                cm/rgb2lch)
+        high (-> "#132b43"
+                 cm/hex2rgb
+                 cm/rgb2lch)]
+    (let [itpl  #(utils/linearly-interpolate [0 1] % pct)
           color (mapv itpl (utils/zipvec low high))]
-      (rgb-to-hex color))))
-
+      (-> color
+          cm/lch2rgb
+          cm/rgb2hex)))
+)
