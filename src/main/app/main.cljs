@@ -12,10 +12,14 @@
    [app.utils :as utils :refer [map-vals] :refer-macros [forv]]
    [app.scale :as scale]
 
+   ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
+
    ["react" :as react]
    ["react-dom" :as react-dom]
    ["react-three-fiber" :as r3]
    ))
+
+(r3/extend #js{"OrbitControls" OrbitControls})
 
 
 (defnc Box
@@ -37,15 +41,33 @@
        ($ "meshStandardMaterial" {:color (if hovered "hotpink" c)}))
     ))
 
+(defnc CameraControls
+  []
+  (let [three       (r3/useThree)
+        camera      (.-camera three)
+        gl          (.-gl three)
+        domElement  (.-domElement gl)
+        controlsRef (react/useRef)]
+    (js/console.log three)
+    (js/console.log camera)
+    (r3/useFrame (fn [state] (-> controlsRef .-current .update)))
+    (react/useEffect (fn [] (let [controls (-> controlsRef .-current)]
+                              (set! (.-enableDamping controls) true)
+                              (set! (.-dampingFactor controls) 0.3)))
+                     #js [])
+    ($ "orbitControls" {:ref controlsRef :args #js [camera domElement]})))
+
 (defnc root
   [{:keys [data] :as props}]
   (d/div {:id "plot-container"}
-         ($ r3/Canvas
+         ($ r3/Canvas {}
+            ($ CameraControls)
             ($ "ambientLight" {:intensity 0.5})
             ($ "spotLight" {:position #js[10 10 10]
                             :angle    0.15
                             :penumbra 1})
             ($ "pointLight" {:position #js[-10 -10 -10]})
+            ;; ($ "line" ($ ""))
             (<>
              (let [data (utils/cols-to-rows data)
 
