@@ -42,74 +42,76 @@
     ))
 
 (defnc CameraControls
-  []
-  (let [three       (r3/useThree)
-        camera      (.-camera three)
-        gl          (.-gl three)
-        domElement  (.-domElement gl)
-        controlsRef (react/useRef)]
+  [{} ccRef]
+  {:wrap [(react/forwardRef)]}
+  (let [three      (r3/useThree)
+        camera     (.-camera three)
+        gl         (.-gl three)
+        domElement (.-domElement gl)
+        ccRef      (if (nil? ccRef) (react/useRef) ccRef)]
     (js/console.log three)
     (js/console.log camera)
-    (r3/useFrame (fn [state] (-> controlsRef .-current .update)))
-    (react/useEffect (fn [] (let [controls (-> controlsRef .-current)]
+    (r3/useFrame (fn [state] (-> ccRef .-current .update)))
+    (react/useEffect (fn [] (let [controls (-> ccRef .-current)]
                               (set! (.-enableDamping controls) true)
                               (set! (.-dampingFactor controls) 0.3)))
                      #js [])
-    ($ "orbitControls" {:ref controlsRef :args #js [camera domElement]})))
+    ($ "orbitControls" {:ref ccRef :args #js [camera domElement]})))
 
 (defnc root
   [{:keys [data] :as props}]
-  (d/div {:id "plot-container"}
-         ($ r3/Canvas {}
-            ($ CameraControls)
-            ($ "ambientLight" {:intensity 0.5})
-            ($ "spotLight" {:position #js[10 10 10]
-                            :angle    0.15
-                            :penumbra 1})
-            ($ "pointLight" {:position #js[-10 -10 -10]})
-            ;; ($ "line" ($ ""))
-            (<>
-             (let [data (utils/cols-to-rows data)
+  (let [ccRef (react/useRef)]
+    (d/div {:id "plot-container"}
+           ($ r3/Canvas {}
+              ($ CameraControls {:ref ccRef})
+              ($ "ambientLight" {:intensity 0.5})
+              ($ "spotLight" {:position #js[10 10 10]
+                              :angle    0.15
+                              :penumbra 1})
+              ($ "pointLight" {:position #js[-10 -10 -10]})
+              ;; ($ "line" ($ ""))
+              (<>
+               (let [data (utils/cols-to-rows data)
 
-                   ;; id-getter #(get % "sample")
-                   ;; x-getter  #(get % "X1")
-                   ;; y-getter  #(get % "X2")
-                   ;; z-getter  #(get % "X3")
-                   ;; c-getter  #(get % "X1")
+                     ;; id-getter #(get % "sample")
+                     ;; x-getter  #(get % "X1")
+                     ;; y-getter  #(get % "X2")
+                     ;; z-getter  #(get % "X3")
+                     ;; c-getter  #(get % "X1")
 
-                   ;; TODO: get this from the data
+                     ;; TODO: get this from the data
 
-                   id-getter #(get % "gene")
-                   x-getter  #(get % "tsne1")
-                   y-getter  #(get % "tsne2")
-                   z-getter  #(get % "tsne3")
-                   c-getter  #(get % "avg_log_exp")
+                     id-getter #(get % "gene")
+                     x-getter  #(get % "tsne1")
+                     y-getter  #(get % "tsne2")
+                     z-getter  #(get % "tsne3")
+                     c-getter  #(get % "avg_log_exp")
 
-                   x-scale-spec (scale/axis-linear (map x-getter data))
-                   y-scale-spec (scale/axis-linear (map y-getter data))
-                   z-scale-spec (scale/axis-linear (map z-getter data))
-                   c-scale-spec (scale/color-continuous (map c-getter data))]
+                     x-scale-spec (scale/axis-linear (map x-getter data))
+                     y-scale-spec (scale/axis-linear (map y-getter data))
+                     z-scale-spec (scale/axis-linear (map z-getter data))
+                     c-scale-spec (scale/color-continuous (map c-getter data))]
 
-               (forv [datum data]
-                     ($ Box {:key (id-getter datum)
+                 (forv [datum data]
+                       ($ Box {:key (id-getter datum)
 
-                             :x (scale/apply-scale x-scale-spec (x-getter datum))
-                             :y (scale/apply-scale y-scale-spec (y-getter datum))
-                             :z (scale/apply-scale z-scale-spec (z-getter datum))
-                             :c (scale/apply-scale c-scale-spec (c-getter datum))})
-                     )))
-            )
-         (d/div {:id "overlay"}
-                (d/div {:id "toolbar"}
-                       (d/i {:class "material-icons" :title "previous coord"} "undo")
-                       (d/i {:class "material-icons" :title "next coord"} "redo")
-                       (d/i {:class "material-icons" :title "previous color"} "arrow_back")
-                       (d/i {:class "material-icons" :title "next color"} "arrow_forward")
-                       (d/i {:class "material-icons" :title "reset camera angle"} "youtube_searched_for")
-                       (d/i {:class "material-icons" :title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
-                       (d/i {:class "material-icons" :title "toggle between orthographic and perspective camera"} "call_merge"))
-                (d/div {:id "datum-meta"}))
-         (d/div {:id "scale-name"})))
+                               :x (scale/apply-scale x-scale-spec (x-getter datum))
+                               :y (scale/apply-scale y-scale-spec (y-getter datum))
+                               :z (scale/apply-scale z-scale-spec (z-getter datum))
+                               :c (scale/apply-scale c-scale-spec (c-getter datum))})
+                       )))
+              )
+           (d/div {:id "overlay"}
+                  (d/div {:id "toolbar"}
+                         (d/i {:class "material-icons" :title "previous coord"} "undo")
+                         (d/i {:class "material-icons" :title "next coord"} "redo")
+                         (d/i {:class "material-icons" :title "previous color"} "arrow_back")
+                         (d/i {:class "material-icons" :title "next color"} "arrow_forward")
+                         (d/i {:class "material-icons" :title "reset camera angle" :onClick #(-> ccRef .-current .reset)} "youtube_searched_for")
+                         (d/i {:class "material-icons" :title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
+                         (d/i {:class "material-icons" :title "toggle between orthographic and perspective camera"} "call_merge"))
+                  (d/div {:id "datum-meta"}))
+           (d/div {:id "scale-name"}))))
 
 (defn fetch-ch
   [^js url]
