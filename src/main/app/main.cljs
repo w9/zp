@@ -1,7 +1,7 @@
 ;; TODO: implement dynamic boundary dimensions
-;; TODO: implement dynamic extraction of columns
 ;; TODO: sprites instead of boxes
 ;; TODO: Learn about react-spring https://github.com/pmndrs/react-spring
+;; TODO: implement selection of mappings
 (ns app.main
   (:refer-clojure :exclude [Box])
   (:require
@@ -59,23 +59,21 @@
     (react/useEffect (fn []
                        (let [controls (-> ccRef .-current)]
                          (set! (.-enableDamping controls) true)
-                         (set! (.-dampingFactor controls) 0.3)))
+                         (set! (.-dampingFactor controls) 0.3))
+                       #())
                      #js [])
     ($ "orbitControls" {:ref ccRef :args #js [camera domElement]})))
 
 (defnc root
-  [{:keys [data] :as props}]
+  [{:keys [data mappings options] :as props}]
   (let [ccRef  (react/useRef)
         geoRef (react/useRef)
-        v (react/useMemo #(js/Float32Array. #js[1 -1 1
-                                               -1 -1 1
-                                               -1 -1 -1
-                                                1 -1 -1])
-                         #js [])]
-    (react/useEffect
-     (fn []
-       (js/console.log ccRef)
-       (js/console.log geoRef)))
+        v      (react/useMemo #(js/Float32Array. #js[1 -1 1
+                                                     -1 -1 1
+                                                     -1 -1 -1
+                                                     1 -1 -1])
+                              #js [])]
+    (js/console.log mappings)
     (d/div {:id "plot-container"}
            ($ r3/Canvas {}
               ($ CameraControls {:ref ccRef})
@@ -89,7 +87,7 @@
               ($ "lineLoop"
                  ($ "bufferGeometry"
                     ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                          :itemSize 3 :count 4 :array v}))
+                                          :itemSize     3 :count 4 :array v}))
                  ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
               (<>
                (let [data (utils/cols-to-rows data)
@@ -103,15 +101,15 @@
                      ;; TODO: get this from the data
 
                      id-getter #(get % "gene")
-                     x-getter  #(get % "tsne1")
-                     y-getter  #(get % "tsne2")
-                     z-getter  #(get % "tsne3")
-                     c-getter  #(get % "avg_log_exp")
+                     x-getter  #(get % (get-in mappings ["coord" 0 0]))
+                     y-getter  #(get % (get-in mappings ["coord" 0 1]))
+                     z-getter  #(get % (get-in mappings ["coord" 0 2]))
+                     c-getter  #(get % (get-in mappings ["color" 0]))
 
                      x-scale-spec (scale/axis-linear (map x-getter data))
                      y-scale-spec (scale/axis-linear (map y-getter data))
                      z-scale-spec (scale/axis-linear (map z-getter data))
-                     c-scale-spec (scale/color-continuous (map c-getter data))]
+                     c-scale-spec (scale/color-map (map c-getter data))]
 
                  (forv [datum data]
                        ($ Box {:key (id-getter datum)
@@ -155,24 +153,29 @@
 
 (defonce data (atom nil))
 
-(defn ^:export refresh!
+(defn render!
   []
   (let [root-el (js/document.getElementById "root")]
-    (react-dom/render ($ root {:data @data}) root-el)
-    ))
+    (react-dom/render ($ root {:data     (get @data "data")
+                               :mappings (get @data "mappings")
+                               :options  (get @data "options")})
+                      root-el))
+  )
+
+(defn ^:export refresh!
+  []
+  (render!)
+  )
 
 (defn ^:export init!
   []
   (go
-    (let [json-url    (get-json-url)
-          json-input  (<! (fetch-ch json-url))
-          root-el     (js/document.getElementById "root")
-          old-root-el (js/document.getElementById "old-root")]
-      ;; (render-zp old-root-el json-input)
+    (let [json-url   (get-json-url)
+          json-input (<! (fetch-ch json-url))]
       ;; (reset! data (js->clj json-input))
-      (reset! data (js->clj (.-data utils/test-data)))
-      (react-dom/render ($ root {:data @data}) root-el)
-      )))
+      (reset! data (js->clj utils/test-data))
+      )
+    (render!)))
 
 ;; let toolbarDom = document.createElement('div')
 ;; toolbarDom.id = 'toolbar'
