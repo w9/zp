@@ -14,6 +14,8 @@
 
    ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
 
+   ["three" :as three]
+
    ["react" :as react]
    ["react-dom" :as react-dom]
    ["react-three-fiber" :as r3]
@@ -49,18 +51,27 @@
         gl         (.-gl three)
         domElement (.-domElement gl)
         ccRef      (if (nil? ccRef) (react/useRef) ccRef)]
-    (js/console.log three)
-    (js/console.log camera)
     (r3/useFrame (fn [state] (-> ccRef .-current .update)))
-    (react/useEffect (fn [] (let [controls (-> ccRef .-current)]
-                              (set! (.-enableDamping controls) true)
-                              (set! (.-dampingFactor controls) 0.3)))
+    (react/useEffect (fn []
+                       (let [controls (-> ccRef .-current)]
+                         (set! (.-enableDamping controls) true)
+                         (set! (.-dampingFactor controls) 0.3)))
                      #js [])
     ($ "orbitControls" {:ref ccRef :args #js [camera domElement]})))
 
 (defnc root
   [{:keys [data] :as props}]
-  (let [ccRef (react/useRef)]
+  (let [ccRef  (react/useRef)
+        geoRef (react/useRef)
+        v (react/useMemo #(js/Float32Array. #js[1 -1 1
+                                               -1 -1 1
+                                               -1 -1 -1
+                                                1 -1 -1])
+                         #js [])]
+    (react/useEffect
+     (fn []
+       (js/console.log ccRef)
+       (js/console.log geoRef)))
     (d/div {:id "plot-container"}
            ($ r3/Canvas {}
               ($ CameraControls {:ref ccRef})
@@ -68,8 +79,14 @@
               ($ "spotLight" {:position #js[10 10 10]
                               :angle    0.15
                               :penumbra 1})
-              ($ "pointLight" {:position #js[-10 -10 -10]})
+              ($ "pointLight" {:ref      geoRef
+                               :position #js[-10 -10 -10]})
               ;; ($ "line" ($ ""))
+              ($ "lineLoop"
+                 ($ "bufferGeometry"
+                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
+                                          :itemSize 3 :count 4 :array v}))
+                 ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
               (<>
                (let [data (utils/cols-to-rows data)
 
