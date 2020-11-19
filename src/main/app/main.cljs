@@ -1,3 +1,7 @@
+;; TODO: implement dynamic boundary dimensions
+;; TODO: implement dynamic extraction of columns
+;; TODO: sprites instead of boxes
+;; TODO: Learn about react-spring https://github.com/pmndrs/react-spring
 (ns app.main
   (:refer-clojure :exclude [Box])
   (:require
