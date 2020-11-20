@@ -94,3 +94,10 @@
         get-ratio (fn [x] (/ (- x d0) (- d1 d0)))
         get-y     (fn [r] (+ (* r (- r1 r0)) r0))]
     (-> x get-ratio get-y)))
+
+(defn spy
+  ([value]
+   (spy :spy value))
+  ([tag value]
+   (js/console.log tag value)
+   value))

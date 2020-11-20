@@ -1,5 +1,5 @@
-;; TODO: implement dynamic boundary dimensions
 ;; TODO: sprites instead of boxes
+;; TODO: implement dynamic boundary dimensions
 ;; TODO: Learn about react-spring https://github.com/pmndrs/react-spring
 ;; TODO: implement selection of mappings
 (ns app.main
@@ -13,38 +13,43 @@
    [helix.core :refer [defnc $ <>]]
    [helix.dom :as d]
    [helix.hooks :as hooks]
-   [app.utils :as utils :refer [map-vals] :refer-macros [forv]]
+   [app.utils :as utils :refer [map-vals spy forv]]
    [app.scale :as scale]
 
    ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
+   ["./assets.js" :as assets-js]
 
    ["three" :as three]
 
    ["react" :as react]
    ["react-dom" :as react-dom]
-   ["react-three-fiber" :as r3]
-   ))
+   ["react-three-fiber" :as r3]))
 
 (r3/extend #js{"OrbitControls" OrbitControls})
 
+(def dot-canvas (atom nil))
 
-(defnc Box
+(defnc Dot
   [{:keys [x y z c] :as props}]
   (let [mesh                 (react/useRef)
         [hovered setHovered] (react/useState false)
         [active setActive]   (react/useState false)]
-    (r3/useFrame (fn []
-                   (let [r (-> mesh .-current .-rotation)]
-                     (set! (.-x r) (+ 0.01 (.-x r)))
-                     (set! (.-y r) (+ 0.01 (.-y r))))))
-    ($ "mesh" {:ref           mesh
-               :position      #js[x y z]
-               :scale         (if active #js[0.15 0.15 0.15] #js[0.1 0.1 0.1])
-               :onClick       (fn [e] (setActive (not active)))
-               :onPointerOver (fn [e] (setHovered true))
-               :onPointerOut  (fn [e] (setHovered false))}
-       ($ "boxBufferGeometry" {:args #js [1 1 1]})
-       ($ "meshStandardMaterial" {:color (if hovered "hotpink" c)}))
+    ;; (r3/useFrame (fn []
+    ;;                (let [r (-> mesh .-current .-rotation)]
+    ;;                  (set! (.-x r) (+ 0.01 (.-x r)))
+    ;;                  (set! (.-y r) (+ 0.01 (.-y r))))))
+    ;; ($ "sprite" {:position #js[x y z]
+    ;;              :scale #js[0.1 0.1 0.1]}
+    ;;    ($ "spriteMaterial" {:color 0xffffffff}
+    ;;       ($ "canvasTexture" {:args @dot-canvas :attach "map"})))
+    ;; ($ "mesh" {:ref           mesh
+    ;;            :position      #js[x y z]
+    ;;            :scale         (if active #js[0.15 0.15 0.15] #js[0.1 0.1 0.1])
+    ;;            :onClick       (fn [e] (setActive (not active)))
+    ;;            :onPointerOver (fn [e] (setHovered true))
+    ;;            :onPointerOut  (fn [e] (setHovered false))}
+    ;;    ($ "boxBufferGeometry" {:args #js [1 1 1]})
+    ;;    ($ "meshStandardMaterial" {:color (if hovered "hotpink" c)}))
     ))
 
 (defnc CameraControls
@@ -68,58 +73,70 @@
   [{:keys [data mappings options] :as props}]
   (let [ccRef  (react/useRef)
         geoRef (react/useRef)
-        v      (react/useMemo #(js/Float32Array. #js[1 -1 1
+        v-base (react/useMemo #(js/Float32Array. #js[1 -1 1
                                                      -1 -1 1
                                                      -1 -1 -1
                                                      1 -1 -1])
-                              #js [])]
-    (js/console.log mappings)
+                              #js [])
+        v-dots (react/useMemo #(assets-js/computeVDots) #js[])
+        ]
     (d/div {:id "plot-container"}
            ($ r3/Canvas {}
               ($ CameraControls {:ref ccRef})
-              ($ "ambientLight" {:intensity 0.5})
-              ($ "spotLight" {:position #js[10 10 10]
-                              :angle    0.15
-                              :penumbra 1})
-              ($ "pointLight" {:ref      geoRef
-                               :position #js[-10 -10 -10]})
+              ;; ($ "ambientLight" {:intensity 0.5})
+              ;; ($ "spotLight" {:position #js[10 10 10]
+              ;;                 :angle    0.15
+              ;;                 :penumbra 1})
+              ;; ($ "pointLight" {:ref      geoRef
+              ;;                  :position #js[-10 -10 -10]})
               ;; ($ "line" ($ ""))
               ($ "lineLoop"
                  ($ "bufferGeometry"
                     ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                          :itemSize     3 :count 4 :array v}))
+                                          :itemSize     3
+                                          :count        4
+                                          :array        v-base}))
                  ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
-              (<>
-               (let [data (utils/cols-to-rows data)
+              ($ "points" {:material (spy :material (.-material v-dots))}
+                 ($ "bufferGeometry"
+                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
+                                          :itemSize     3
+                                          :count        100000
+                                          :array        (.-positions v-dots)})
+                    ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
+                                          :itemSize     3
+                                          :count        100000
+                                          :array        (.-colors v-dots)})))
+              ;; (let [data (utils/cols-to-rows data)
 
-                     ;; id-getter #(get % "sample")
-                     ;; x-getter  #(get % "X1")
-                     ;; y-getter  #(get % "X2")
-                     ;; z-getter  #(get % "X3")
-                     ;; c-getter  #(get % "X1")
+              ;;       ;; id-getter #(get % "sample")
+              ;;       ;; x-getter  #(get % "X1")
+              ;;       ;; y-getter  #(get % "X2")
+              ;;       ;; z-getter  #(get % "X3")
+              ;;       ;; c-getter  #(get % "X1")
 
-                     ;; TODO: get this from the data
+              ;;       ;; TODO: get this from the data
 
-                     id-getter #(get % "gene")
-                     x-getter  #(get % (get-in mappings ["coord" 0 0]))
-                     y-getter  #(get % (get-in mappings ["coord" 0 1]))
-                     z-getter  #(get % (get-in mappings ["coord" 0 2]))
-                     c-getter  #(get % (get-in mappings ["color" 0]))
+              ;;       id-getter #(get % "gene")
+              ;;       x-getter  #(get % (get-in mappings ["coord" 0 0]))
+              ;;       y-getter  #(get % (get-in mappings ["coord" 0 1]))
+              ;;       z-getter  #(get % (get-in mappings ["coord" 0 2]))
+              ;;       c-getter  #(get % (get-in mappings ["color" 0]))
 
-                     x-scale-spec (scale/axis-linear (map x-getter data))
-                     y-scale-spec (scale/axis-linear (map y-getter data))
-                     z-scale-spec (scale/axis-linear (map z-getter data))
-                     c-scale-spec (scale/color-map (map c-getter data))]
+              ;;       x-scale-spec (scale/axis-linear (map x-getter data))
+              ;;       y-scale-spec (scale/axis-linear (map y-getter data))
+              ;;       z-scale-spec (scale/axis-linear (map z-getter data))
+              ;;       c-scale-spec (scale/color-map (map c-getter data))]
 
-                 (forv [datum data]
-                       ($ Box {:key (id-getter datum)
+              ;;   (forv [datum data]
+              ;;         ($ Dot {:key (id-getter datum)
 
-                               :x (scale/apply-scale x-scale-spec (x-getter datum))
-                               :y (scale/apply-scale y-scale-spec (y-getter datum))
-                               :z (scale/apply-scale z-scale-spec (z-getter datum))
-                               :c (scale/apply-scale c-scale-spec (c-getter datum))})
-                       )))
+              ;;                 :x (scale/apply-scale x-scale-spec (x-getter datum))
+              ;;                 :y (scale/apply-scale y-scale-spec (y-getter datum))
+              ;;                 :z (scale/apply-scale z-scale-spec (z-getter datum))
+              ;;                 :c (scale/apply-scale c-scale-spec (c-getter datum))})))
               )
+
            (d/div {:id "overlay"}
                   (d/div {:id "toolbar"}
                          (d/i {:class "material-icons" :title "previous coord"} "undo")
@@ -159,13 +176,11 @@
     (react-dom/render ($ root {:data     (get @data "data")
                                :mappings (get @data "mappings")
                                :options  (get @data "options")})
-                      root-el))
-  )
+                      root-el)))
 
 (defn ^:export refresh!
   []
-  (render!)
-  )
+  (render!))
 
 (defn ^:export init!
   []
@@ -173,8 +188,9 @@
     (let [json-url   (get-json-url)
           json-input (<! (fetch-ch json-url))]
       ;; (reset! data (js->clj json-input))
-      (reset! data (js->clj utils/test-data))
-      )
+      (reset! data (js->clj utils/test-data)))
+    (reset! dot-canvas (assets-js/drawDotCanvas))
+    (js/console.log @dot-canvas)
     (render!)))
 
 ;; let toolbarDom = document.createElement('div')
