@@ -19,5 +19,7 @@
   },
   "author": "",
   "license": "ISC",
-  "prettier": {"printWidth": 120}
+  "prettier": {
+    "printWidth": 120
+  }
 }

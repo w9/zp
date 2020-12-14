@@ -15,9 +15,12 @@
    [helix.hooks :as hooks]
    [app.utils :as utils :refer [map-vals spy forv]]
    [app.scale :as scale]
+   [shadow.resource :as rc]
 
    ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
+
    ["./assets.js" :as assets-js]
+   ["./chroma.js" :as chroma-js]
 
    ["three" :as three]
 
@@ -56,10 +59,13 @@
   [{} ccRef]
   {:wrap [(react/forwardRef)]}
   (let [three      (r3/useThree)
+        raycaster      (.-raycaster three)
         camera     (.-camera three)
         gl         (.-gl three)
         domElement (.-domElement gl)
         ccRef      (if (nil? ccRef) (react/useRef) ccRef)]
+    (spy :raycaster raycaster)
+    (set! (.-threshold (.-Points (.-params raycaster))) 0.005)
     (r3/useFrame (fn [state] (-> ccRef .-current .update)))
     (react/useEffect (fn []
                        (let [controls (-> ccRef .-current)]
@@ -78,8 +84,13 @@
                                                      -1 -1 -1
                                                      1 -1 -1])
                               #js [])
-        v-dots (react/useMemo #(assets-js/computeVDots) #js[])
-        ]
+        n-dots 1000
+        dots (clj->js (repeatedly n-dots (fn [] [(rand) (rand) (rand)])))
+        colors (assets-js/pointsBufferFromArray dots)
+        positions (assets-js/pointsBufferFromArray (clj->js (mapv (fn [arr] (mapv #(- (* % 2) 1) arr)) dots)))
+        vertex-shader (rc/inline "./vertex_shader.glsl")
+        fragment-shader (rc/inline "./fragment_shader.glsl")
+        material (react/useMemo #(assets-js/computeMaterial vertex-shader fragment-shader) #js[])]
     (d/div {:id "plot-container"}
            ($ r3/Canvas {}
               ($ CameraControls {:ref ccRef})
@@ -97,16 +108,19 @@
                                           :count        4
                                           :array        v-base}))
                  ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
-              ($ "points" {:material (spy :material (.-material v-dots))}
+              ($ "points" {:onClick (fn [e] (js/console.log (.-index (aget (.-intersections e) 0))))
+                           :material (spy :material material)}
+                 ;; ($ "shaderMaterial" {:uniforms #js{"color" #js{"value" 0xffffff}
+                 ;;                                    "pointTexture" #js{"value" }}}})
                  ($ "bufferGeometry"
                     ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
                                           :itemSize     3
-                                          :count        100000
-                                          :array        (.-positions v-dots)})
+                                          :count        n-dots
+                                          :array        positions})
                     ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
                                           :itemSize     3
-                                          :count        100000
-                                          :array        (.-colors v-dots)})))
+                                          :count        n-dots
+                                          :array        colors})))
               ;; (let [data (utils/cols-to-rows data)
 
               ;;       ;; id-getter #(get % "sample")
@@ -189,7 +203,7 @@
           json-input (<! (fetch-ch json-url))]
       ;; (reset! data (js->clj json-input))
       (reset! data (js->clj utils/test-data)))
-    (reset! dot-canvas (assets-js/drawDotCanvas))
+    ;; (reset! dot-canvas (assets-js/drawDotCanvas))
     (js/console.log @dot-canvas)
     (render!)))
 

@@ -71,7 +71,9 @@ const lab2rgb = ([l, a, b]) => {
   return [r, g, b_];
 };
 
-export const lch2rgb = (lch) => lab2rgb(lch2lab(lch));
+export function lch2rgb(lch) {
+  return lab2rgb(lch2lab(lch));
+}
 
 const lab2lch = ([l, a, b]) => {
   const c = sqrt(a * a + b * b);
@@ -106,11 +108,13 @@ const rgb2xyz = ([r, g, b]) => {
   return [x, y, z];
 };
 
-export const rgb2lch = (rgb) => lab2lch(rgb2lab(rgb));
+export function rgb2lch(rgb) {
+  return lab2lch(rgb2lab(rgb));
+}
 
 const RE_HEX = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 
-export const hex2rgb = (hex) => {
+export function hex2rgb(hex) {
   if (!hex.match(RE_HEX)) {
     throw new Error(`unknown hex color: ${hex}`);
   }
@@ -134,11 +138,11 @@ export const hex2rgb = (hex) => {
   return [r, g, b];
 };
 
-export const rgb2hex = ([r, g, b]) => {
+export function rgb2hex([r, g, b]) {
   r = round(r);
   g = round(g);
   b = round(b);
   const u = (r << 16) | (g << 8) | b;
-  const str = u.toString(16).padStart(6, '0');
-  return '#' + str;
+  const str = u.toString(16).padStart(6, "0");
+  return "#" + str;
 };
