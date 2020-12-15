@@ -1,11 +1,12 @@
-;; TODO: sprites instead of boxes
 ;; TODO: implement dynamic boundary dimensions
-;; TODO: Learn about react-spring https://github.com/pmndrs/react-spring
 ;; TODO: implement selection of mappings
+
 (ns app.main
   (:refer-clojure :exclude [Box])
   (:require
-   [clojure.core.async :as async :refer [go <! >!]]
+   [clojure.core.async :as async :refer [go go-loop <! >!]]
+   [clojure.core.async.interop :refer [<p!]]
+   [promesa.core :as p]
    [clojure.string :as str]
    [goog.format :as gformat]
    [goog.net.XhrIo :as gxhrio]
@@ -15,6 +16,7 @@
    [helix.hooks :as hooks]
    [app.utils :as utils :refer [map-vals spy forv]]
    [app.scale :as scale]
+   [goog.object :refer [get] :rename {get oget}]
 
    ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
    ["./assets.js" :as assets-js]
@@ -23,6 +25,8 @@
 
    ["react" :as react]
    ["react-dom" :as react-dom]
+   ;; ["react-spring" :as rspring]
+   ["@react-spring/three" :as rsthree]
    ["react-three-fiber" :as r3]))
 
 (r3/extend #js{"OrbitControls" OrbitControls})
@@ -71,17 +75,23 @@
 
 (defnc root
   [{:keys [data mappings options] :as props}]
-  (let [ccRef  (react/useRef)
-        geoRef (react/useRef)
-        v-base (react/useMemo #(js/Float32Array. #js[1 -1 1
-                                                     -1 -1 1
-                                                     -1 -1 -1
-                                                     1 -1 -1])
-                              #js [])
-        v-dots (react/useMemo #(assets-js/computeVDots) #js[])
-        ]
+  (let [ccRef           (react/useRef)
+        geoRef          (react/useRef)
+        v-base          (react/useMemo #(js/Float32Array. #js[1 -1 1
+                                                              -1 -1 1
+                                                              -1 -1 -1
+                                                              1 -1 -1])
+                                       #js [])
+        sprops          (rsthree/useSpring #js{"from" #js{"lineLoopScale" #js[1 1 1]}
+                                               "to"   (fn [next]
+                                                        (p/loop []
+                                                          (next #js{"lineLoopScale" #js[1.1 1.1 1.1]})
+                                                          (next #js{"lineLoopScale" #js[1 1 1]})
+                                                          (p/recur)))})
+        line-loop-scale (oget (spy :base-resize-factor sprops) "lineLoopScale")
+        dots            (react/useMemo #(assets-js/computeDots) #js[])]
     (d/div {:id "plot-container"}
-           ($ r3/Canvas {}
+           ($ r3/Canvas
               ($ CameraControls {:ref ccRef})
               ;; ($ "ambientLight" {:intensity 0.5})
               ;; ($ "spotLight" {:position #js[10 10 10]
@@ -90,23 +100,24 @@
               ;; ($ "pointLight" {:ref      geoRef
               ;;                  :position #js[-10 -10 -10]})
               ;; ($ "line" ($ ""))
-              ($ "lineLoop"
-                 ($ "bufferGeometry"
-                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                          :itemSize     3
-                                          :count        4
-                                          :array        v-base}))
-                 ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
-              ($ "points" {:material (spy :material (.-material v-dots))}
-                 ($ "bufferGeometry"
-                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                          :itemSize     3
-                                          :count        100000
-                                          :array        (.-positions v-dots)})
-                    ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
-                                          :itemSize     3
-                                          :count        100000
-                                          :array        (.-colors v-dots)})))
+              (spy :comp ($ (oget rsthree/a "lineLoop") {:scale line-loop-scale}
+                            ($ "bufferGeometry"
+                               ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
+                                                     :itemSize     3
+                                                     :count        4
+                                                     :array        v-base}))
+                            ($ "lineBasicMaterial" {:color "black" :linewidth 1})))
+              ($ "primitive" {:object dots})
+              ;; ($ "points" {:material (spy :material (.-material v-dots))}
+              ;;    ($ "bufferGeometry"
+              ;;       ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
+              ;;                             :itemSize     3
+              ;;                             :count        100000
+              ;;                             :array        (spy :positions (.-positions v-dots))})
+              ;;       ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
+              ;;                             :itemSize     3
+              ;;                             :count        100000
+              ;;                             :array        (spy :colors (.-colors v-dots))})))
               ;; (let [data (utils/cols-to-rows data)
 
               ;;       ;; id-getter #(get % "sample")
@@ -189,8 +200,7 @@
           json-input (<! (fetch-ch json-url))]
       ;; (reset! data (js->clj json-input))
       (reset! data (js->clj utils/test-data)))
-    (reset! dot-canvas (assets-js/drawDotCanvas))
-    (js/console.log @dot-canvas)
+    ;; (reset! dot-canvas (assets-js/drawDotCanvas))
     (render!)))
 
 ;; let toolbarDom = document.createElement('div')
