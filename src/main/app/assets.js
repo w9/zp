@@ -80,7 +80,20 @@ export const computeColors = (nDots) => {
   return colors;
 };
 
-export const computeMaterial = (vertexShader, fragmentShader) => {
+export const computeCrosshairsMaterial = (vertexShader, fragmentShader) => {
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      color: { value: new THREE.Color(0xffffff) },
+      pointTexture: { value: new THREE.TextureLoader().load("textures/crosshairs.png") },
+    },
+    vertexShader,
+    fragmentShader,
+    alphaTest: 0.99,
+  });
+  return material;
+};
+
+export const computeDiscMaterial = (vertexShader, fragmentShader) => {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
