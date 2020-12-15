@@ -1,6 +1,8 @@
 import THREE from "three";
 import { rgb2lch, rgb2xyz, rgb2lab, hsluv } from "./chroma";
 
+console.log(shadow);
+
 export const drawDotCanvas = () => {
   const canvas = document.createElement("canvas");
 
@@ -25,82 +27,83 @@ export const drawDotCanvas = () => {
   return ctx.canvas;
 };
 
-export const computeDots = () => {
-  const N_DOTS = 100000;
-  const PARTICLE_SIZE = 12;
+export function pointsBufferFromArray(dots) {
+  const nDots = dots.length;
+  const arr = new Float32Array(nDots * 3);
+  for (let i = 0; i < nDots; i++) {
+    arr.set(dots[i], i* 3);
+  }
+  return arr;
+};
 
-  const positions = new Float32Array(N_DOTS * 3);
-  const colors = new Float32Array(N_DOTS * 3);
-  const sizes = new Float32Array(N_DOTS);
-  for (let i = 0; i < N_DOTS; i++) {
-    const r = Math.random();
-    const g = Math.random();
-    const b = Math.random();
+export function computePositionArray(dots) {
+  const nDots = dots.length;
+  const arr = new Float32Array(nDots * 3);
+  for (let i = 0; i < nDots; i++) {
+    arr.set(dots[i].map(x => x * 2 - 1), i* 3);
+  }
+  return arr;
+};
 
-    // const [l, c, h] = rgb2lch([r, g, b]);
-    // const position = new THREE.Vector3(h/100 - 1.7, c * 5 - 1, l * 7 - 1);
-    // const [x, y, z] = rgb2xyz([r, g, b]);
-    // const position = new THREE.Vector3(x * 1000 - 139, y * 1000 - 139, z * 1000 - 139);
-    // const [l, a, b_] = rgb2lab([r, g, b]);
-    // const position = new THREE.Vector3(a, b_, l);
-    // const [h, s, l] = hsluv.rgbToHsluv([r, g, b]);
-    // const position = new THREE.Vector3((h / 360) * 2 - 1, (s / 100) * 2 - 1, (l / 100) * 2 - 1);
-    // const [l, c, h] = hsluv.rgbToLch([r, g, b]);
-    // const position = new THREE.Vector3((h / 360) * 2 - 1, (c / 200) * 2 - 1, (l / 100) * 2 - 1);
-    const [x, y, z] = hsluv.rgbToXyz([r, g, b]);
-    const position = new THREE.Vector3(x, y, z);
+export function computeColorArray(dots) {
+  const nDots = dots.length;
+  const arr = new Float32Array(nDots * 3);
+  for (let i = 0; i < nDots; i++) {
+    arr.set(dots[i], i * 3);
+  }
+  return arr;
+};
+
+export function computePositions(nDots) {
+  const positions = new Float32Array(nDots * 3);
+  for (let i = 0; i < nDots; i++) {
+    const x = Math.random();
+    const y = Math.random();
+    const z = Math.random();
+
+    const position = new THREE.Vector3(x * 2 - 1, y * 2 - 1, z * 2 - 1);
     position.toArray(positions, i * 3);
+  }
+  return positions;
+};
+
+export const computeColors = (nDots) => {
+  const colors = new Float32Array(nDots * 3);
+  for (let i = 0; i < nDots; i++) {
+    const x = Math.random();
+    const y = Math.random();
+    const z = Math.random();
 
     const color = new THREE.Color(r, g, b);
     color.toArray(colors, i * 3);
 
     sizes[i] = PARTICLE_SIZE * 0.5;
   }
+  return colors;
+};
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("customColor", new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+export const computeCrosshairsMaterial = (vertexShader, fragmentShader) => {
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      color: { value: new THREE.Color(0xffffff) },
+      pointTexture: { value: new THREE.TextureLoader().load("textures/crosshairs.png") },
+    },
+    vertexShader,
+    fragmentShader,
+    alphaTest: 0.99,
+  });
+  return material;
+};
 
+export const computeDiscMaterial = (vertexShader, fragmentShader) => {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xffffff) },
       pointTexture: { value: new THREE.TextureLoader().load("textures/disc.png") },
     },
-    vertexShader: `
-
-attribute float size;
-attribute vec3 customColor;
-
-varying vec3 vColor;
-
-void main() {
-  vColor = customColor;
-  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-  gl_PointSize = size * ( 3.0 / -mvPosition.z );
-  gl_Position = projectionMatrix * mvPosition;
-}
-
-`,
-    fragmentShader: `
-
-uniform vec3 color;
-uniform sampler2D pointTexture;
-
-varying vec3 vColor;
-
-void main() {
-  gl_FragColor = vec4( color * vColor, 1.0 );
-  gl_FragColor = gl_FragColor * texture2D( pointTexture, gl_PointCoord );
-  if ( gl_FragColor.a < ALPHATEST ) discard;
-}
-
-`,
-
-    alphaTest: 0.9,
+    vertexShader,
+    fragmentShader,
+    alphaTest: 0.99,
   });
-
-  const points = new THREE.Points(geometry, material);
-
-  return points;
+  return material;
 };

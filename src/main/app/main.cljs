@@ -16,10 +16,12 @@
    [helix.hooks :as hooks]
    [app.utils :as utils :refer [map-vals spy forv]]
    [app.scale :as scale]
-   [goog.object :refer [get] :rename {get oget}]
+   [shadow.resource :as rc]
 
    ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
+
    ["./assets.js" :as assets-js]
+   ["./chroma.js" :as chroma-js]
 
    ["three" :as three]
 
@@ -60,10 +62,12 @@
   [{} ccRef]
   {:wrap [(react/forwardRef)]}
   (let [three      (r3/useThree)
+        raycaster  (.-raycaster three)
         camera     (.-camera three)
         gl         (.-gl three)
         domElement (.-domElement gl)
         ccRef      (if (nil? ccRef) (react/useRef) ccRef)]
+    (set! (.-threshold (.-Points (.-params raycaster))) 0.05)
     (r3/useFrame (fn [state] (-> ccRef .-current .update)))
     (react/useEffect (fn []
                        (let [controls (-> ccRef .-current)]
@@ -75,21 +79,30 @@
 
 (defnc root
   [{:keys [data mappings options] :as props}]
-  (let [ccRef           (react/useRef)
-        geoRef          (react/useRef)
-        v-base          (react/useMemo #(js/Float32Array. #js[1 -1 1
-                                                              -1 -1 1
-                                                              -1 -1 -1
-                                                              1 -1 -1])
-                                       #js [])
-        sprops          (rsthree/useSpring #js{"from" #js{"lineLoopScale" #js[1 1 1]}
-                                               "to"   (fn [next]
-                                                        (p/loop []
-                                                          (next #js{"lineLoopScale" #js[1.1 1.1 1.1]})
-                                                          (next #js{"lineLoopScale" #js[1 1 1]})
-                                                          (p/recur)))})
-        line-loop-scale (oget (spy :base-resize-factor sprops) "lineLoopScale")
-        dots            (react/useMemo #(assets-js/computeDots) #js[])]
+  (let [ccRef                 (react/useRef)
+        geoRef                (react/useRef)
+        sprite-position-state (react/useState #js[1 1 1])
+        sprite-position       (aget sprite-position-state 0)
+        set-sprite-position   (aget sprite-position-state 1)
+        v-base                (react/useMemo #(js/Float32Array. #js[1 -1 1
+                                                                    -1 -1 1
+                                                                    -1 -1 -1
+                                                                    1 -1 -1])
+                                             #js [])
+        n-dots                100
+        dots                  (repeatedly n-dots (fn [] [(rand) (rand) (rand)]))
+        colors                (assets-js/pointsBufferFromArray (clj->js dots))
+        ;; positions (assets-js/pointsBufferFromArray (clj->js (mapv (fn [arr] (mapv #(- (* % 2) 1) arr)) dots)))
+        positions             (let [txed-dots   (mapv (fn [dot] (chroma-js/rgb2lch dot)) dots)
+                                    dots-ranges (vec (for [i (range 3)]
+                                                       (utils/extrema (mapv (fn [dot] (nth dot i)) txed-dots))))]
+                                (assets-js/pointsBufferFromArray (clj->js (mapv (fn [dot] (vec (map-indexed (fn [idx x] (utils/linearly-interpolate (nth dots-ranges idx) [-1 1] x))
+                                                                                                            dot)))
+                                                                                txed-dots))))
+        vertex-shader         (rc/inline "./vertex_shader.glsl")
+        fragment-shader       (rc/inline "./fragment_shader.glsl")
+        material              (react/useMemo #(assets-js/computeDiscMaterial vertex-shader fragment-shader) #js[])
+        scrosshair-texture    (r3/useLoader three/TextureLoader "/textures/crosshairs.png")]
     (d/div {:id "plot-container"}
            ($ r3/Canvas
               ($ CameraControls {:ref ccRef})
@@ -100,24 +113,32 @@
               ;; ($ "pointLight" {:ref      geoRef
               ;;                  :position #js[-10 -10 -10]})
               ;; ($ "line" ($ ""))
-              (spy :comp ($ (oget rsthree/a "lineLoop") {:scale line-loop-scale}
-                            ($ "bufferGeometry"
-                               ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                                     :itemSize     3
-                                                     :count        4
-                                                     :array        v-base}))
-                            ($ "lineBasicMaterial" {:color "black" :linewidth 1})))
-              ($ "primitive" {:object dots})
-              ;; ($ "points" {:material (spy :material (.-material v-dots))}
-              ;;    ($ "bufferGeometry"
-              ;;       ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-              ;;                             :itemSize     3
-              ;;                             :count        100000
-              ;;                             :array        (spy :positions (.-positions v-dots))})
-              ;;       ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
-              ;;                             :itemSize     3
-              ;;                             :count        100000
-              ;;                             :array        (spy :colors (.-colors v-dots))})))
+              ($ "lineLoop"
+                 ($ "bufferGeometry"
+                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
+                                          :itemSize     3
+                                          :count        4
+                                          :array        v-base}))
+                 ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
+
+              ($ "sprite" {:position sprite-position
+                           :scale    #js[0.1 0.1 0.1]}
+                 ($ "spriteMaterial" {:map   scrosshair-texture
+                                      :color 0x000000}))
+
+              ($ "points" {:onDoubleClick (fn [e] (set-sprite-position (.toArray (.-point (aget (.-intersections e) 0)))))
+                           :material      material}
+                 ;; ($ "shaderMaterial" {:uniforms #js{"color" #js{"value" 0xffffff}
+                 ;;                                    "pointTexture" #js{"value" }}}})
+                 ($ "bufferGeometry"
+                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
+                                          :itemSize     3
+                                          :count        n-dots
+                                          :array        positions})
+                    ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
+                                          :itemSize     3
+                                          :count        n-dots
+                                          :array        colors})))
               ;; (let [data (utils/cols-to-rows data)
 
               ;;       ;; id-getter #(get % "sample")
@@ -184,9 +205,10 @@
 (defn render!
   []
   (let [root-el (js/document.getElementById "root")]
-    (react-dom/render ($ root {:data     (get @data "data")
-                               :mappings (get @data "mappings")
-                               :options  (get @data "options")})
+    (react-dom/render ($ react/Suspense {:fallback nil}
+                         ($ root {:data     (get @data "data")
+                                  :mappings (get @data "mappings")
+                                  :options  (get @data "options")}))
                       root-el)))
 
 (defn ^:export refresh!
@@ -199,8 +221,10 @@
     (let [json-url   (get-json-url)
           json-input (<! (fetch-ch json-url))]
       ;; (reset! data (js->clj json-input))
-      (reset! data (js->clj utils/test-data)))
+      ;; (reset! data (js->clj utils/test-data))
+      )
     ;; (reset! dot-canvas (assets-js/drawDotCanvas))
+    ;; (js/console.log @dot-canvas)
     (render!)))
 
 ;; let toolbarDom = document.createElement('div')
