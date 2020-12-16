@@ -1,6 +1,5 @@
 ;; TODO: implement dynamic boundary dimensions
 ;; TODO: implement selection of mappings
-
 (ns app.main
   (:refer-clojure :exclude [Box])
   (:require
@@ -17,6 +16,7 @@
    [app.utils :as utils :refer [map-vals spy forv]]
    [app.scale :as scale]
    [shadow.resource :as rc]
+   [applied-science.js-interop :as j]
 
    ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
 
@@ -76,6 +76,17 @@
                        #())
                      #js [])
     ($ "orbitControls" {:ref ccRef :args #js [camera domElement]})))
+
+(defn generate-toy-data
+  [n-dots]
+  (vec (repeatedly n-dots
+                   #(let [r       (rand)
+                          g       (rand)
+                          b       (rand)
+                          [l c h] (chroma-js/rgb2lch #js[r g b])]
+                      {:position [l c h]
+                       :color    [r g b]}))))
+
 
 (defnc root
   [{:keys [data mappings options] :as props}]
@@ -181,13 +192,11 @@
                   (d/div {:id "datum-meta"}))
            (d/div {:id "scale-name"}))))
 
-(defn fetch-ch
+(defn async-fetch
   [^js url]
-  (let [ch (async/chan)]
-    (gxhrio/send url (fn [e]
-                       (async/put! ch ^js (.getResponseJson (.-target e)))
-                       (async/close! ch)))
-    ch))
+  (p/create (fn [resolve reject]
+              (gxhrio/send url (fn [e]
+                                 (resolve ^js (.getResponseJson (.-target e))))))))
 
 (defn get-json-url
   []
@@ -217,15 +226,16 @@
 
 (defn ^:export init!
   []
-  (go
-    (let [json-url   (get-json-url)
-          json-input (<! (fetch-ch json-url))]
-      ;; (reset! data (js->clj json-input))
-      ;; (reset! data (js->clj utils/test-data))
-      )
+  (p/let [json-url   (get-json-url)
+          json-input (async-fetch json-url)]
+    (js/console.log json-input)
+    ;; (reset! data (js->clj json-input))
+    ;; (reset! data (js->clj utils/test-data))
     ;; (reset! dot-canvas (assets-js/drawDotCanvas))
     ;; (js/console.log @dot-canvas)
-    (render!)))
+    ;; (render!)
+    )
+  )
 
 ;; let toolbarDom = document.createElement('div')
 ;; toolbarDom.id = 'toolbar'

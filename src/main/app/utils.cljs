@@ -101,3 +101,12 @@
   ([tag value]
    (js/console.log tag value)
    value))
+
+(defn i-lookup
+  [o]
+  (reify
+    ILookup
+    (-lookup [_ k]
+      (goog.object/get o (name k)))
+    (-lookup [_ k not-found]
+      (goog.object/get o (name k) not-found))))

@@ -3,6 +3,7 @@
  :deps {}
 
  :aliases {:cljs {:extra-deps {
+                               applied-science/js-interop    {:mvn/version "0.2.5"}
                                funcool/promesa               {:mvn/version "6.0.0"}
                                binaryage/devtools            {:mvn/version "1.0.2"}
                                cider/cider-nrepl             {:mvn/version "0.25.3"}
