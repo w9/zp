@@ -12,7 +12,7 @@
    [goog.Uri :as guri]
    [helix.core :refer [defnc $ <>]]
    [helix.dom :as d]
-   [helix.hooks :as hooks]
+   [helix.hooks :as hh]
    [app.utils :as utils :refer [map-vals spy forv]]
    [app.scale :as scale]
    [shadow.resource :as rc]
@@ -228,12 +228,12 @@
   []
   (p/let [json-url   (get-json-url)
           json-input (async-fetch json-url)]
-    (js/console.log json-input)
+    ;; (js/console.log json-input)
     ;; (reset! data (js->clj json-input))
     ;; (reset! data (js->clj utils/test-data))
     ;; (reset! dot-canvas (assets-js/drawDotCanvas))
     ;; (js/console.log @dot-canvas)
-    ;; (render!)
+    (render!)
     )
   )
 

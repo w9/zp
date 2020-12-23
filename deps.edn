@@ -2,29 +2,39 @@
 
  :deps {}
 
+ ;; |    :file |                      :name |  :version | :latest-version |
+ ;; |----------+----------------------------+-----------+-----------------|
+ ;; | deps.edn | applied-science/js-interop |     0.2.5 |           0.2.7 |
+ ;; |          |          cider/cider-nrepl |    0.25.3 |          0.25.5 |
+ ;; |          |     com.fulcrologic/fulcro |     3.4.3 |          3.4.10 |
+ ;; |          |        lambdaisland/kaocha |   1.0.700 |         1.0.732 |
+ ;; |          |                nrepl/nrepl |     0.8.2 |           0.8.3 |
+ ;; |          |       seancorfield/depstar |   1.1.117 |         2.0.160 |
+ ;; |          |       thheller/shadow-cljs |    2.11.4 |         2.11.10 |
+ ;; |          |              tupelo/tupelo | 20.08.27b |        20.12.16 |
  :aliases {:cljs {:extra-deps {
-                               applied-science/js-interop    {:mvn/version "0.2.5"}
+                               applied-science/js-interop    {:mvn/version "0.2.7"}
                                funcool/promesa               {:mvn/version "6.0.0"}
                                binaryage/devtools            {:mvn/version "1.0.2"}
-                               cider/cider-nrepl             {:mvn/version "0.25.3"}
-                               com.fulcrologic/fulcro        {:mvn/version "3.4.3"}
+                               cider/cider-nrepl             {:mvn/version "0.25.5"}
+                               com.fulcrologic/fulcro        {:mvn/version "3.4.10"}
                                lilactown/helix               {:mvn/version "0.0.13"}
-                               nrepl/nrepl                   {:mvn/version "0.8.2"}
+                               nrepl/nrepl                   {:mvn/version "0.8.3"}
                                org.clojure/core.async        {:mvn/version "1.3.610"}
                                org.clojure/core.match        {:mvn/version "1.0.0"}
                                org.clojure/test.check        {:mvn/version "1.1.0"}
                                refactor-nrepl/refactor-nrepl {:mvn/version "2.5.0"}
-                               thheller/shadow-cljs          {:mvn/version "2.11.4"}
-                               tupelo/tupelo                 {:mvn/version "20.08.27b"}
+                               thheller/shadow-cljs          {:mvn/version "2.11.10"}
+                               tupelo/tupelo                 {:mvn/version "20.12.16"}
                                }}
 
            :clj-tests {:extra-paths ["src/test"]
                        :main-opts   ["-m" "kaocha.runner"]
-                       :extra-deps  {lambdaisland/kaocha {:mvn/version "1.0.700"}}}
+                       :extra-deps  {lambdaisland/kaocha {:mvn/version "1.0.732"}}}
 
            :antq {:extra-deps {antq/antq {:mvn/version "RELEASE"}}
                   :main-opts  ["-m" "antq.core"]}
 
-           :depstar {:extra-deps {seancorfield/depstar {:mvn/version "1.1.117"}}
+           :depstar {:extra-deps {seancorfield/depstar {:mvn/version "1.1.160"}}
                      :main-opts  ["-m" "hf.depstar.uberjar"]}
            }}
