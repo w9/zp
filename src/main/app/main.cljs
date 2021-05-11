@@ -92,9 +92,8 @@
   [{:keys [data mappings options] :as props}]
   (let [ccRef                 (react/useRef)
         geoRef                (react/useRef)
-        sprite-position-state (react/useState #js[1 1 1])
-        sprite-position       (aget sprite-position-state 0)
-        set-sprite-position   (aget sprite-position-state 1)
+        [sprite-position
+         set-sprite-position] (react/useState #js[1 1 1])
         v-base                (react/useMemo #(js/Float32Array. #js[1 -1 1
                                                                     -1 -1 1
                                                                     -1 -1 -1
@@ -103,7 +102,6 @@
         n-dots                100
         dots                  (repeatedly n-dots (fn [] [(rand) (rand) (rand)]))
         colors                (assets-js/pointsBufferFromArray (clj->js dots))
-        ;; positions (assets-js/pointsBufferFromArray (clj->js (mapv (fn [arr] (mapv #(- (* % 2) 1) arr)) dots)))
         positions             (let [txed-dots   (mapv (fn [dot] (chroma-js/rgb2lch dot)) dots)
                                     dots-ranges (vec (for [i (range 3)]
                                                        (utils/extrema (mapv (fn [dot] (nth dot i)) txed-dots))))]
