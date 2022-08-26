@@ -104,6 +104,7 @@ export const computeDiscMaterial = (vertexShader, fragmentShader) => {
     vertexShader,
     fragmentShader,
     alphaTest: 0.99,
+    transparent: true,
   });
   return material;
 };

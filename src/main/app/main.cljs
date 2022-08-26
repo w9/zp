@@ -1,35 +1,23 @@
 ;; TODO: implement dynamic boundary dimensions
 ;; TODO: implement selection of mappings
 (ns app.main
-  (:refer-clojure :exclude [Box])
   (:require
-   [clojure.core.async :as async :refer [go go-loop <! >!]]
-   [clojure.core.async.interop :refer [<p!]]
-   [promesa.core :as p]
-   [clojure.string :as str]
-   [goog.format :as gformat]
-   [goog.net.XhrIo :as gxhrio]
-   [goog.Uri :as guri]
-   [helix.core :refer [defnc $ <>]]
-   [helix.dom :as d]
-   [helix.hooks :as hh]
-   [app.utils :as utils :refer [map-vals spy forv]]
-   [app.scale :as scale]
-   [shadow.resource :as rc]
-   [applied-science.js-interop :as j]
-
-   ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
-
    ["./assets.js" :as assets-js]
    ["./chroma.js" :as chroma-js]
-
-   ["three" :as three]
-
+   ["@react-three/fiber" :as r3]
    ["react" :as react]
+   ["react-dom/client" :as rdc]
+   ["three" :as three]
+   ["three/examples/jsm/controls/OrbitControls" :refer [OrbitControls]]
    ["react-dom" :as react-dom]
-   ;; ["react-spring" :as rspring]
-   ["@react-spring/three" :as rsthree]
-   ["react-three-fiber" :as r3]))
+   [app.utils :as utils]
+   [goog.net.XhrIo :as gxhrio]
+   [goog.Uri :as guri]
+   [helix.core :refer [$ defnc]]
+   [helix.dom :as d]
+   [promesa.core :as p]
+   [shadow.resource :as rc]
+   [taoensso.timbre :as log]))
 
 (r3/extend #js{"OrbitControls" OrbitControls})
 
@@ -37,9 +25,9 @@
 
 (defnc Dot
   [{:keys [x y z c] :as props}]
-  (let [mesh                 (react/useRef)
+  (let [mesh (react/useRef)
         [hovered setHovered] (react/useState false)
-        [active setActive]   (react/useState false)]
+        [active setActive] (react/useState false)]
     ;; (r3/useFrame (fn []
     ;;                (let [r (-> mesh .-current .-rotation)]
     ;;                  (set! (.-x r) (+ 0.01 (.-x r)))
@@ -61,12 +49,13 @@
 (defnc CameraControls
   [{} ccRef]
   {:wrap [(react/forwardRef)]}
-  (let [three      (r3/useThree)
-        raycaster  (.-raycaster three)
-        camera     (.-camera three)
-        gl         (.-gl three)
+  (let [three (r3/useThree)
+        raycaster (.-raycaster three)
+        camera (.-camera three)
+        gl (.-gl three)
         domElement (.-domElement gl)
-        ccRef      (if (nil? ccRef) (react/useRef) ccRef)]
+        internalRef (react/useRef)
+        ccRef (if (nil? ccRef) internalRef ccRef)]
     (set! (.-threshold (.-Points (.-params raycaster))) 0.05)
     (r3/useFrame (fn [state] (-> ccRef .-current .update)))
     (react/useEffect (fn []
@@ -74,47 +63,50 @@
                          (set! (.-enableDamping controls) true)
                          (set! (.-dampingFactor controls) 0.3))
                        #())
-                     #js [])
+      #js [])
     ($ "orbitControls" {:ref ccRef :args #js [camera domElement]})))
 
 (defn generate-toy-data
   [n-dots]
   (vec (repeatedly n-dots
-                   #(let [r       (rand)
-                          g       (rand)
-                          b       (rand)
-                          [l c h] (chroma-js/rgb2lch #js[r g b])]
-                      {:position [l c h]
-                       :color    [r g b]}))))
-
+         #(let [r (rand)
+                g (rand)
+                b (rand)
+                [l c h] (chroma-js/rgb2lch #js[r g b])]
+            {:position [l c h]
+             :color [r g b]}))))
 
 (defnc root
   [{:keys [data mappings options] :as props}]
-  (let [ccRef                 (react/useRef)
-        geoRef                (react/useRef)
-        [sprite-position
-         set-sprite-position] (react/useState #js[1 1 1])
-        v-base                (react/useMemo #(js/Float32Array. #js[1 -1 1
-                                                                    -1 -1 1
-                                                                    -1 -1 -1
-                                                                    1 -1 -1])
-                                             #js [])
-        n-dots                100
-        dots                  (repeatedly n-dots (fn [] [(rand) (rand) (rand)]))
-        colors                (assets-js/pointsBufferFromArray (clj->js dots))
-        positions             (let [txed-dots   (mapv (fn [dot] (chroma-js/rgb2lch dot)) dots)
-                                    dots-ranges (vec (for [i (range 3)]
-                                                       (utils/extrema (mapv (fn [dot] (nth dot i)) txed-dots))))]
-                                (assets-js/pointsBufferFromArray (clj->js (mapv (fn [dot] (vec (map-indexed (fn [idx x] (utils/linearly-interpolate (nth dots-ranges idx) [-1 1] x))
-                                                                                                            dot)))
-                                                                                txed-dots))))
-        vertex-shader         (rc/inline "./vertex_shader.glsl")
-        fragment-shader       (rc/inline "./fragment_shader.glsl")
-        material              (react/useMemo #(assets-js/computeDiscMaterial vertex-shader fragment-shader) #js[])
-        scrosshair-texture    (r3/useLoader three/TextureLoader "/textures/crosshairs.png")]
+  (let [ccRef (react/useRef)
+        geoRef (react/useRef)
+        [sprite-position set-sprite-position] (react/useState #js[1 1 1])
+        v-base (react/useMemo #(js/Float32Array. #js[1 -1 1
+                                                     -1 -1 1
+                                                     -1 -1 -1
+                                                     1 -1 -1])
+                 #js [])
+        n-dots 100
+        dots (repeatedly n-dots (fn [] [(rand) (rand) (rand)]))
+        colors (assets-js/pointsBufferFromArray (clj->js dots))
+        positions (let [txed-dots (mapv (fn [dot] (chroma-js/rgb2lch dot)) dots)
+                        dots-ranges (vec (for [i (range 3)]
+                                           (utils/extrema (mapv (fn [dot] (nth dot i)) txed-dots))))]
+                    (assets-js/pointsBufferFromArray (clj->js (mapv (fn [dot] (vec (map-indexed (fn [idx x] (utils/linearly-interpolate (nth dots-ranges idx) [-1 1] x))
+                                                                                     dot)))
+                                                                txed-dots))))
+        vertex-shader (rc/inline "./vertex_shader.glsl")
+        fragment-shader (rc/inline "./fragment_shader.glsl")
+        material (react/useMemo #(assets-js/computeDiscMaterial vertex-shader fragment-shader) #js[])
+        ;; material (react/useMemo
+        ;;            (fn []
+        ;;              (three/PointsMaterial. #js {"size" 0.1
+        ;;                                          "vertexColors" true}))
+        ;;            #js[])
+        scrosshair-texture (r3/useLoader three/TextureLoader "/textures/crosshairs.png")]
     (d/div {:id "plot-container"}
-           ($ r3/Canvas
-              ($ CameraControls {:ref ccRef})
+      ($ r3/Canvas
+        ($ CameraControls {:ref ccRef})
               ;; ($ "ambientLight" {:intensity 0.5})
               ;; ($ "spotLight" {:position #js[10 10 10]
               ;;                 :angle    0.15
@@ -122,32 +114,32 @@
               ;; ($ "pointLight" {:ref      geoRef
               ;;                  :position #js[-10 -10 -10]})
               ;; ($ "line" ($ ""))
-              ($ "lineLoop"
-                 ($ "bufferGeometry"
-                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                          :itemSize     3
-                                          :count        4
-                                          :array        v-base}))
-                 ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
+        ($ "lineLoop"
+          ($ "bufferGeometry"
+            ($ "bufferAttribute" {:attach "attributes-position"
+                                  :itemSize 3
+                                  :count 4
+                                  :array v-base}))
+          ($ "lineBasicMaterial" {:color "black" :linewidth 1}))
 
-              ($ "sprite" {:position sprite-position
-                           :scale    #js[0.1 0.1 0.1]}
-                 ($ "spriteMaterial" {:map   scrosshair-texture
-                                      :color 0x000000}))
+        ($ "sprite" {:position sprite-position
+                     :scale #js[0.1 0.1 0.1]}
+          ($ "spriteMaterial" {:map scrosshair-texture
+                               :color 0x000000}))
 
-              ($ "points" {:onDoubleClick (fn [e] (set-sprite-position (.toArray (.-point (aget (.-intersections e) 0)))))
-                           :material      material}
+        ($ "points" {:onDoubleClick (fn [e] (set-sprite-position (.toArray (.-point (aget (.-intersections e) 0)))))
+                     :material material}
                  ;; ($ "shaderMaterial" {:uniforms #js{"color" #js{"value" 0xffffff}
                  ;;                                    "pointTexture" #js{"value" }}}})
-                 ($ "bufferGeometry"
-                    ($ "bufferAttribute" {:attachObject #js["attributes" "position"]
-                                          :itemSize     3
-                                          :count        n-dots
-                                          :array        positions})
-                    ($ "bufferAttribute" {:attachObject #js["attributes" "customColor"]
-                                          :itemSize     3
-                                          :count        n-dots
-                                          :array        colors})))
+          ($ "bufferGeometry"
+            ($ "bufferAttribute" {:attach "attributes-position"
+                                  :itemSize 3
+                                  :count n-dots
+                                  :array positions})
+            ($ "bufferAttribute" {:attach "attributes-customColor"
+                                  :itemSize 3
+                                  :count n-dots
+                                  :array colors})))
               ;; (let [data (utils/cols-to-rows data)
 
               ;;       ;; id-getter #(get % "sample")
@@ -176,19 +168,19 @@
               ;;                 :y (scale/apply-scale y-scale-spec (y-getter datum))
               ;;                 :z (scale/apply-scale z-scale-spec (z-getter datum))
               ;;                 :c (scale/apply-scale c-scale-spec (c-getter datum))})))
-              )
+        )
 
-           (d/div {:id "overlay"}
-                  (d/div {:id "toolbar"}
-                         (d/i {:class "material-icons" :title "previous coord"} "undo")
-                         (d/i {:class "material-icons" :title "next coord"} "redo")
-                         (d/i {:class "material-icons" :title "previous color"} "arrow_back")
-                         (d/i {:class "material-icons" :title "next color"} "arrow_forward")
-                         (d/i {:class "material-icons" :title "reset camera angle" :onClick #(-> ccRef .-current .reset)} "youtube_searched_for")
-                         (d/i {:class "material-icons" :title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
-                         (d/i {:class "material-icons" :title "toggle between orthographic and perspective camera"} "call_merge"))
-                  (d/div {:id "datum-meta"}))
-           (d/div {:id "scale-name"}))))
+      (d/div {:id "overlay"}
+        (d/div {:id "toolbar"}
+          (d/i {:class "material-icons" :title "previous coord"} "undo")
+          (d/i {:class "material-icons" :title "next coord"} "redo")
+          (d/i {:class "material-icons" :title "previous color"} "arrow_back")
+          (d/i {:class "material-icons" :title "next color"} "arrow_forward")
+          (d/i {:class "material-icons" :title "reset camera angle" :onClick #(-> ccRef .-current .reset)} "youtube_searched_for")
+          (d/i {:class "material-icons" :title "toggle aspect ratio between 1:1:1 and original"} "aspect_ratio")
+          (d/i {:class "material-icons" :title "toggle between orthographic and perspective camera"} "call_merge"))
+        (d/div {:id "datum-meta"}))
+      (d/div {:id "scale-name"}))))
 
 (defn async-fetch
   [^js url]
@@ -209,14 +201,18 @@
 
 (defonce data (atom nil))
 
+(defonce react-root (atom nil))
+
 (defn render!
   []
-  (let [root-el (js/document.getElementById "root")]
-    (react-dom/render ($ react/Suspense {:fallback nil}
-                         ($ root {:data     (get @data "data")
-                                  :mappings (get @data "mappings")
-                                  :options  (get @data "options")}))
-                      root-el)))
+  (when (nil? @react-root)
+    (let [root-el (js/document.getElementById "root")]
+      (reset! react-root (rdc/createRoot root-el))))
+  (-> @react-root
+    (.render ($ react/Suspense {:fallback nil}
+               ($ root {:data (get @data "data")
+                        :mappings (get @data "mappings")
+                        :options (get @data "options")})))))
 
 (defn ^:export refresh!
   []
@@ -224,16 +220,14 @@
 
 (defn ^:export init!
   []
-  (p/let [json-url   (get-json-url)
+  (p/let [json-url (get-json-url)
           json-input (async-fetch json-url)]
     ;; (js/console.log json-input)
     ;; (reset! data (js->clj json-input))
     ;; (reset! data (js->clj utils/test-data))
     ;; (reset! dot-canvas (assets-js/drawDotCanvas))
     ;; (js/console.log @dot-canvas)
-    (render!)
-    )
-  )
+    (render!)))
 
 ;; let toolbarDom = document.createElement('div')
 ;; toolbarDom.id = 'toolbar'
@@ -280,7 +274,6 @@
 ;; toggleOrthoButton.title = 'toggle between orthographic and perspective camera'
 ;; toggleOrthoButton.classList.add('material-icons')
 ;; toolbarDom.appendChild(toggleOrthoButton)
-
 
 ;; window.addEventListener('keydown', function(e) {
 ;;   switch ( e.key ) {

@@ -4,18 +4,17 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "@react-spring/three": "^9.0.0-rc.3",
-    "chroma-js": "^2.1.0",
+    "@react-spring/three": "^9.5.2",
+    "@react-three/fiber": "^8.6.0",
+    "chroma-js": "^2.4.2",
     "create-react-class": "^15.7.0",
-    "react": "^17.0.1",
-    "react-dom": "^17.0.1",
-    "react-refresh": "0.8.1",
-    "react-spring": "^8.0.27",
-    "react-three-fiber": "^5.1.7",
-    "shadow-cljs": "^2.11.5",
-    "three": "^0.122.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-refresh": "0.14.0",
+    "react-spring": "^9.5.2",
+    "shadow-cljs": "^2.19.9",
+    "three": "^0.143.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
